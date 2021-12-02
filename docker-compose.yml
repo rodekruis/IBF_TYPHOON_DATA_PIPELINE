@@ -8,6 +8,6 @@ services:
     env_file:
       - secrets
     volumes:
-      - "C:/data/forecast:/home/ibf"
+      - "C:/data/forecast:/home/fbf/forecast"
       #- $TYPHOONMODEL_OUTPUT:/home/fbf/forecast
     command: run-typhoon-model --debug

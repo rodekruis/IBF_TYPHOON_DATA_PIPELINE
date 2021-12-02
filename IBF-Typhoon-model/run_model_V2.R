@@ -96,8 +96,12 @@ wind_grid <- read.csv(windfield_data) %>%
     pcode = as.factor(substr(adm3_pcode, 1, 10))
   )
 
-rainfall_ <- Read_rainfall_v2(wshade)
 
+if(file.exists(paste0(rain_directory, "rain_data.csv") )){
+rainfall_ <- read.csv(paste0(rain_directory, "rain_data.csv"))%>%dplyr::mutate(rainfall_24h=max_24h_rain)%>%dplyr::select(Mun_Code,rainfall_24h)
+} else{
+rainfall_ <- Read_rainfall_v2(wshade)}
+ 
 
 typhoon_hazard <- wind_grid %>%
   left_join(rainfall_, by = "Mun_Code") %>%

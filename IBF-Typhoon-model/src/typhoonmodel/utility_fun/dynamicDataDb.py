@@ -1,8 +1,7 @@
 import pandas as pd
 import requests
 import json
-from flood_model.settings import *
-from flood_model.secrets import *
+from typhoonmodel.utility_fun.settings import *
 import os
 import numpy as np
 import logging
@@ -14,16 +13,14 @@ class DatabaseManager:
 
     """ Class to upload and process data in the database """
 
-    def __init__(self, leadTimeLabel, countryCodeISO3,admin_level):
+    def __init__(self, countryCodeISO3,admin_level):
         self.countryCodeISO3 = countryCodeISO3
-        self.leadTimeLabel = leadTimeLabel
+        #self.leadTimeLabel = leadTimeLabel
         self.triggerFolder = PIPELINE_OUTPUT + "triggers_rp_per_station/"
-        self.affectedFolder = PIPELINE_OUTPUT + "calculated_affected/"
-        self.EXPOSURE_DATA_SOURCES = SETTINGS[countryCodeISO3]['EXPOSURE_DATA_SOURCES']
-        #self.API_SERVICE_URL = SETTINGS[countryCodeISO3]['IBF_API_URL']  
-        self.API_SERVICE_URL = SETTINGS_SECRET[countryCodeISO3]['IBF_API_URL']   
-        self.ADMIN_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['PASSWORD']   
-        self.levels = SETTINGS[countryCodeISO3]['levels']        
+        #self.affectedFolder = PIPELINE_OUTPUT + "calculated_affected/"
+        #self.EXPOSURE_DATA_SOURCES = SETTINGS[countryCodeISO3]['EXPOSURE_DATA_SOURCES']
+        self.ADMIN_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['PASSWORD']
+        self.API_SERVICE_URL = SETTINGS_SECRET[countryCodeISO3]['IBF_API_URL'] 
         self.admin_level = admin_level
 
     def upload(self):

@@ -48,9 +48,12 @@ class Forecast:
         #Activetyphoon = Check_for_active_typhoon.check_active_typhoon()
         start_time = datetime.now()
         self.ADMIN_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['PASSWORD']
+        self.ADMIN_LOGIN = SETTINGS_SECRET[countryCodeISO3]['ADMIN_LOGIN']
         self.API_SERVICE_URL = SETTINGS_SECRET[countryCodeISO3]['IBF_API_URL'] 
         self.UCL_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['UCL_PASSWORD']
         self.UCL_USERNAME = SETTINGS_SECRET[countryCodeISO3]['UCL_USERNAME']
+        self.AZURE_STORAGE_ACCOUNT = SETTINGS_SECRET[countryCodeISO3]['AZURE_STORAGE_ACCOUNT']
+        self.AZURE_CONNECTING_STRING = SETTINGS_SECRET[countryCodeISO3]['AZURE_CONNECTING_STRING']   
         self.ECMWF_MAX_TRIES = 3
         self.ECMWF_SLEEP = 30  # s
         self.main_path=main_path
@@ -316,6 +319,13 @@ class Forecast:
             image_filenames = list(Path(Output_folder).glob('*.png'))
             self.data_filenames_list[typhoons]=data_filenames
             self.image_filenames_list[typhoons]=image_filenames
+            ##################### upload model output to 510 datalack ############## 
+            
+            file_service = FileService(account_name=self.AZURE_STORAGE_ACCOUNT,protocol='https', connection_string=self.AZURE_CONNECTING_STRING)
+            file_service.create_share('forecast')
+            OutPutFolder=date_dir
+            file_service.create_directory('forecast', OutPutFolder) 
+        
             for img_file in image_filenames:   
                 file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(img_file.parts[-1]),img_file, content_settings=ContentSettings(content_type='image/png'))
 
