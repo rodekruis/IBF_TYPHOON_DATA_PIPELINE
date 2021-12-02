@@ -1,0 +1,15 @@
+**/__pycache__
+**/*.pyc
+
+**/*.Rproj
+**/.Rhistory
+
+# Anywhere forecast is located
+**/forecast
+
+# Everything in top-level directory
+analysis
+skill_analysis
+trigger_level_analysis
+venv
+local
