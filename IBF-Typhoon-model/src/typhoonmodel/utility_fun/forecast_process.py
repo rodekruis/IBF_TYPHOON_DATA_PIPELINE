@@ -110,7 +110,7 @@ class Forecast:
         cent.check()
         cent.plot()
         admin=gpd.read_file(os.path.join(self.main_path,"data/gis_data/phl_admin3_simpl2.geojson"))
-        pcode=gpd.read_file(os.path.join(self.main_path,"data/pre_disaster_indicators/pcode.csv"))
+        pcode=pd.read_csv(os.path.join(self.main_path,"data/pre_disaster_indicators/pcode.csv"))
         self.pcode=pcode
         df = pd.DataFrame(data=cent.coord)
         df["centroid_id"] = "id"+(df.index).astype(str)  

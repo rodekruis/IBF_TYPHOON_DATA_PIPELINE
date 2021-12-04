@@ -163,7 +163,7 @@ def main(path,debug,remote_directory,typhoonname):
             impact_df.rename(columns={"impact": "house_affected","probability_dist50": "prob_within_50km"},inplace=True)  
             logger.info(f"{len(impact_df)}")
             df_total=pd.merge(df_hazard,impact_df,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
-            #df_total=df_total.fillna(0)
+            df_total=df_total.fillna(0)
             df_total=df_total.drop_duplicates('adm3_pcode')
             logger.info(f"{len(df_total)}")
 
@@ -244,9 +244,11 @@ def main(path,debug,remote_directory,typhoonname):
             for layer in ["windspeed","rainfall","prob_within_50km","houses_affected","alert_threshold"]:
 
                 # prepare layer
+                logger.info(f"preparing data for {layer}")
                 #exposure_data = {'countryCodeISO3': countrycode}
                 exposure_data = {"countryCodeISO3": "PHL"}
                 exposure_place_codes = []
+                #### change the data frame here to include impact
                 for ix, row in df_total.iterrows():
                     exposure_entry = {"placeCode": row["adm3_pcode"],
                                       "amount": row[layer]}
@@ -266,7 +268,8 @@ def main(path,debug,remote_directory,typhoonname):
                                                          'Accept': 'application/json'}) 
                 print(upload_response)
                 print(layer)
-                logging.info(f"uploading layers{layer}")
+                logging.info(f"uploading layers {layer}")
+                logger.info(f"layer upload report {upload_response.status_code}")
                 if upload_response.status_code >= 400:
                     logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")
                     #sys.exit()            
