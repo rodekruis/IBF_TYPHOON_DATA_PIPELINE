@@ -160,7 +160,7 @@ def main(path,debug,remote_directory,typhoonname):
             with open (fc.Output_folder+"Average_Impact_"+fc.date_dir+"_"+typhoon_names+".csv") as csv_file2:
                 impact=pd.read_csv(csv_file2)
             impact_df=impact[["adm3_pcode","probability_dist50","impact"]]
-            impact_df.rename(columns={"impact": "house_affected","probability_dist50": "prob_within_50km"},inplace=True)  
+            impact_df.rename(columns={"impact": "houses_affected","probability_dist50": "prob_within_50km"},inplace=True)  
             logger.info(f"{len(impact_df)}")
             df_total=pd.merge(df_hazard,impact_df,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
             df_total=df_total.fillna(0)
