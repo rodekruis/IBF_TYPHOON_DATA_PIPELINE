@@ -75,8 +75,10 @@ def download_rainfall_nomads(Input_folder,path,Alternative_data_point,no_data_va
     rainfall_path=os.path.join(Input_folder,'rainfall/')
     
     list_df=[]  #to store final rainfall dataframes 
-    path_admin =os.path.join(path, 'data-raw/phl_admin3_simpl2.geojson')
-    admin = gpd.read_file(path_admin)
+    ADMIN_PATH = 'data/gis_data/phl_admin3_simpl2.geojson'
+    admin = gpd.read_file(ADMIN_PATH)
+    #path_admin =os.path.join(path, 'data/gis-data/phl_admin3_simpl2.geojson')
+    #admin = gpd.read_file(path_admin)
     rainfall_time_step=['06', '24']
  
     url='https://nomads.ncep.noaa.gov/pub/data/nccf/com/naefs/prod/gefs.%s/'% Input_folder.split('/')[-3][:-2] #datetime.now().strftime("%Y%m%d")

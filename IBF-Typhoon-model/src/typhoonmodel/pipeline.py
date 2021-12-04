@@ -37,7 +37,8 @@ elif platform == "win32":
     from typhoonmodel.utility_fun import Rainfall_data_window as Rainfall_data
 from typhoonmodel.utility_fun.forecast_process import Forecast
 decoder = Decoder()
-
+import requests
+ 
 initialize.setup_logger()
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,6 @@ def main(path,debug,remote_directory,typhoonname):
     initialize.setup_cartopy()
     start_time = datetime.now()
     ############## Defult variables which will be updated if a typhoon is active 
-    landfall_time='NA'
-    landfall_location_manucipality='NA'
-    EAP_TRIGGERED='no'
-    EAP_TRIGGERED_bool='false'
     print('---------------------AUTOMATION SCRIPT STARTED---------------------------------')
     print(str(start_time))
     #%% check for active typhoons
@@ -62,32 +59,74 @@ def main(path,debug,remote_directory,typhoonname):
     print(str(start_time))
     remote_dir = remote_directory
     main_path=path
+    
+    ###############################################################
+    ####  DEBUG flag acts like a mock data 
     if debug:
         typhoonname = 'CHANTHU'
         remote_dir = '20210910120000'
         logger.info(f"DEBUGGING piepline for typhoon{typhoonname}")  
+        
     fc = Forecast(main_path,remote_dir,typhoonname, countryCodeISO3='PHP', admin_level=3)
-    #fc.data_filenames_list
-    #fc.image_filenames_list
+ 
     landfall_time='NA'
     landfall_location_manucipality='NA'
+    EAP_TRIGGERED_bool='false'
     EAP_TRIGGERED='no'
-    landfall_time_hr='NA-hour'
+    ################################################## if there is no Landfall what should be the number for leadtime
+    #################################################   the api accept only numbers and NA is not an option 
+    landfall_time_hr='99-hour'
     IBF_API_URL = fc.API_SERVICE_URL
     ADMIN_LOGIN = fc.ADMIN_LOGIN
     ADMIN_PASSWORD = fc.ADMIN_PASSWORD
-
+    
     # login
-    login_response = requests.post(f'{IBF_API_URL}/api/user/login',
+    login_response = requests.post(fc.API_SERVICE_URL  +'user/login',
                                    data=[('email', ADMIN_LOGIN), ('password', ADMIN_PASSWORD)])
+                                   
     if login_response.status_code >= 400:
         logging.error(f"PIPELINE ERROR AT LOGIN {login_response.status_code}: {login_response.text}")
         sys.exit()
+        
     token = login_response.json()['user']['token']
+    rainfall_=pd.read_csv(os.path.join(fc.Input_folder, "rainfall/rain_data.csv"))
     
-    if not fc.Activetyphoon: #if it is not empty   
+    if fc.Activetyphoon: #if it is not empty   
         for typhoon_names in fc.Activetyphoon:
+            ####### landfall location is a dict {"typhoon name":{"landfall  time":" ","landfall location ":" "}}
             landfall_location=fc.landfall_location[typhoon_names]
+            fname=open(os.path.join(fc.main_path,'forecast/Input/',"typhoon_info_for_model.csv"),'w')
+            fname.write('source,filename,event,time'+'\n')   
+            line_='Rainfall,'+'%srainfall' % fc.Input_folder +',' +typhoon_names+','+ fc.date_dir  
+            fname.write(line_+'\n')
+            line_='Output_folder,'+'%s' % fc.Output_folder +',' +typhoon_names+',' + fc.date_dir  
+            fname.write(line_+'\n')
+            fc.hrs_track_data[typhoon_names].to_csv(os.path.join(fc.Input_folder,'ecmwf_hrs_track.csv'), index=False)
+            line_='ecmwf,'+'%secmwf_hrs_track.csv' % fc.Input_folder+ ',' +typhoon_names+','+ fc.date_dir   
+            fname.write(line_+'\n') 
+            fc.typhhon_wind_data[typhoon_names].to_csv(os.path.join(fc.Input_folder,'windfield.csv'), index=False)
+            line_='windfield,'+'%swindfield.csv' % fc.Input_folder+ ',' +typhoon_names+','+ fc.date_dir   #StormName #
+            fname.write(line_+'\n')
+            fname.close()
+            
+            
+            #############################################################
+            os.chdir(fc.main_path)
+            
+            if platform == "linux" or platform == "linux2": #check if running on linux or windows os
+                # linux
+                try:
+                    p = subprocess.check_call(["Rscript", "run_model_V2.R", str(fc.rainfall_error)])
+                except subprocess.CalledProcessError as e:
+                    logger.error(f'failed to excute R sript')
+                    raise ValueError(str(e))
+            elif platform == "win32": #if OS is windows edit the path for Rscript
+                try:
+                    p = subprocess.check_call(["C:/Program Files/R/R-4.1.0/bin/Rscript", "run_model_V2.R", str(fc.rainfall_error)])
+                except subprocess.CalledProcessError as e:
+                    logger.error(f'failed to excute R sript')
+                    raise ValueError(str(e))            
+
             if landfall_location:#if dict is not empty         
                 landfall_time=list(landfall_location.items())[0][0] #'YYYYMMDDHH'
                 landfall_time_obj = datetime.strptime(landfall_time, '%Y%m%d%H%M')
@@ -103,23 +142,34 @@ def main(path,debug,remote_directory,typhoonname):
             typhoon_windAll=fc.typhhon_wind_data[typhoon_names]
             typhoon_windAll=typhoon_windAll.query('is_ensamble=="False"')
             typhoon_windAll['alert_threshold']=typhoon_windAll['dis_track_min'].apply(lambda x:1 if x< 100 else 0)
-            
-            typhoon_wind=typhoon_windAll[['adm3_pcode','v_max','dis_track_min','alert_threshold']]
+          
+            typhoon_wind=typhoon_windAll[['adm3_pcode','v_max','dis_track_min','alert_threshold']].drop_duplicates('adm3_pcode')
             typhoon_wind.rename(columns={"v_max": "windspeed"},inplace=True) 
+            logger.info(f"{len(typhoon_wind)}")
             #max_06h_rain,max_24h_rain,Mun_Code
-            typhoon_rainfall=fc.rainfall_data[typhoon_names][['Mun_Code','max_24h_rain']]
-            typhoon_rainfall.rename(columns={"Mun_Code": "adm3_pcode","max_24h_rain": "rainfall"},inplace=True) 
-            df_hazard=pd.merge(typhoon_windAll, typhoon_rainfall,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
+            typhoon_rainfall=rainfall_[['Mun_Code','max_24h_rain']]
+            typhoon_rainfall.rename(columns={"Mun_Code": "adm3_pcode","max_24h_rain": "rainfall"},inplace=True)
+            logger.info(f"{len(typhoon_rainfall)}")
+            
+            #create dataframe for all manucipalities 
+            admin_df=fc.pcode 
+            df_wind=pd.merge(admin_df,typhoon_wind,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')            
+            df_hazard=pd.merge(df_wind, typhoon_rainfall,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
+            #df_hazard=df_hazard.fillna(0)
             #"","adm3_en","glat","adm3_pcode","adm2_pcode","adm1_pcode","glon","GEN_mun_code","probability_dist50","impact","WEA_dist_track"
             with open (fc.Output_folder+"Average_Impact_"+fc.date_dir+"_"+typhoon_names+".csv") as csv_file2:
                 impact=pd.read_csv(csv_file2)
             impact_df=impact[["adm3_pcode","probability_dist50","impact"]]
-            impact_df.rename(columns={"adm3_pcode": "placeCode","impact": "house_affected","probability_dist50": "prob_within_50km"},inplace=True)  
-            df_total=pd.merge(impact_df, df_hazard,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
+            impact_df.rename(columns={"impact": "house_affected","probability_dist50": "prob_within_50km"},inplace=True)  
+            logger.info(f"{len(impact_df)}")
+            df_total=pd.merge(df_hazard,impact_df,  how='left', left_on='adm3_pcode',right_on = 'adm3_pcode')
+            #df_total=df_total.fillna(0)
+            df_total=df_total.drop_duplicates('adm3_pcode')
+            logger.info(f"{len(df_total)}")
 
             #"","Typhoon_name",">=100k",">=80k",">=70k",">=50k",">=30k","trigger"
             
-            with open (fc.Output_folder+"trigger_"+fc.date_dir+"_"+typhoon_names+".csv") as csv_file1:
+            with open (fc.Output_folder+"trigger_"+typhoon_names+".csv") as csv_file1:
                 df=pd.read_csv(csv_file1)
                 for index, row in df.iterrows():
                     trigger = int(row['trigger'])            
@@ -139,163 +189,88 @@ def main(path,debug,remote_directory,typhoonname):
             ##############################################################################    
             #upload track 
             
-            exposure_data = {'countryCodeISO3': 'PHL'}
+            exposure_data = {"countryCodeISO3": "PHL"}
             exposure_data["leadTime"] = landfall_time_hr
             exposure_data["eventName"] = typhoon_names
             exposure_place_codes = []
             
             for ix, row in wind_track.iterrows():
-                exposure_entry = {'lat': row['lat'],
-                                  'lon': row['lon'],
-                                  'timestampOfTrackpoint': row['timestampOfTrackpoint']}
+                exposure_entry = {"lat": row["lat"],
+                                  "lon": row["lon"],
+                                  "timestampOfTrackpoint": row["timestampOfTrackpoint"]}
                 exposure_place_codes.append(exposure_entry)
-            exposure_data['trackpointDetails'] = exposure_place_codes
+            exposure_data["trackpointDetails"] = exposure_place_codes
 
 
             # upload data
-            upload_response = requests.post(f'{IBF_API_URL}/api/tphoon-track',
+            upload_response = requests.post(fc.API_SERVICE_URL + 'typhoon-track',
                                             json=exposure_data,
                                             headers={'Authorization': 'Bearer '+token,
                                                      'Content-Type': 'application/json',
                                                      'Accept': 'application/json'})
             print(upload_response)
-            print(layer)  
+            logger.info(f"track upload {upload_response.status_code}")
+ 
             if upload_response.status_code >= 400:
                 logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")  
                 
             ##############################################################################
-            #upload event 
-            exposure_data = {'countryCodeISO3': 'PHL'}
-            exposure_data["disasterType"] = 'typhoon'
-            exposure_data["eventName"] = typhoon_names 
-            exposure_place_codes = []
-            exposure_entry = {'leadTime': landfall_time_hr,
-                              'triggered': EAP_TRIGGERED_bool}
-            exposure_place_codes.append(exposure_entry)
+            # #upload event 
+            # exposure_data = {'countryCodeISO3': 'PHL'}
+            # exposure_data["disasterType"] = 'typhoon'
+            # exposure_data["eventName"] = typhoon_names 
+            # exposure_place_codes = []
+            # exposure_entry = {'leadTime': landfall_time_hr,
+                              # 'triggered': EAP_TRIGGERED_bool}
+            # exposure_place_codes.append(exposure_entry)
       
-            exposure_data['triggersPerLeadTime'] = exposure_place_codes
+            # exposure_data['triggersPerLeadTime'] = exposure_place_codes
 
 
             # upload data
-            upload_response = requests.post(f'{IBF_API_URL}/api/event/triggers-per-leadtime',
-                                            json=exposure_data,
-                                            headers={'Authorization': 'Bearer '+token,
-                                                     'Content-Type': 'application/json',
-                                                     'Accept': 'application/json'})
-            print(upload_response)
-            print(layer)
-            if upload_response.status_code >= 400:
-                logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")            
+            # upload_response = requests.post(f'{IBF_API_URL}/api/event/triggers-per-leadtime',
+                                            # json=exposure_data,
+                                            # headers={'Authorization': 'Bearer '+token,
+                                                     # 'Content-Type': 'application/json',
+                                                     # 'Accept': 'application/json'})
+            # print(upload_response)
+            # print(layer)
+            # if upload_response.status_code >= 400:
+                # logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")            
             
             ##############################################################################            
             # upload dynamic layers
 
-            for layer in ["windspeed","alert_threshold","rainfall","adm3_pcode","prob_within_50km","houses_affected"]:
+            for layer in ["windspeed","rainfall","prob_within_50km","houses_affected","alert_threshold"]:
 
                 # prepare layer
                 #exposure_data = {'countryCodeISO3': countrycode}
-                exposure_data = {'countryCodeISO3': 'PHL'}
+                exposure_data = {"countryCodeISO3": "PHL"}
                 exposure_place_codes = []
                 for ix, row in df_total.iterrows():
-                    exposure_entry = {'placeCode': row['adm3_pcode'],
-                                      'amount': row[layer]}
+                    exposure_entry = {"placeCode": row["adm3_pcode"],
+                                      "amount": row[layer]}
                     exposure_place_codes.append(exposure_entry)
-                    exposure_data['exposurePlaceCodes'] = exposure_place_codes
-                    exposure_data["adminLevel"] = 3
-                    exposure_data["leadTime"] = landfall_time_hr
-                    exposure_data["dynamicIndicator"] = layer
-                    exposure_data["disasterType"] = 'typhoon'
-                    exposure_data["eventName"] = typhoon_names 
+                exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                exposure_data["adminLevel"] = 3
+                exposure_data["leadTime"] = landfall_time_hr
+                exposure_data["dynamicIndicator"] = layer
+                exposure_data["disasterType"] = "typhoon"
+                exposure_data["eventName"] = typhoon_names 
 
-                    # upload data
-                    upload_response = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
-                                                    json=exposure_data,
-                                                    headers={'Authorization': 'Bearer '+token,
-                                                             'Content-Type': 'application/json',
-                                                             'Accept': 'application/json'})
-                    print(lead_time)
-                    print(upload_response)
-                    print(layer)
-                    if upload_response.status_code >= 400:
-                        logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")
-                        #sys.exit()            
+                # upload data
+                upload_response = requests.post(fc.API_SERVICE_URL + 'admin-area-dynamic-data/exposure',
+                                                json=exposure_data,
+                                                headers={'Authorization': 'Bearer '+token,
+                                                         'Content-Type': 'application/json',
+                                                         'Accept': 'application/json'}) 
+                print(upload_response)
+                print(layer)
+                logging.info(f"uploading layers{layer}")
+                if upload_response.status_code >= 400:
+                    logging.error(f"PIPELINE ERROR AT UPLOAD {login_response.status_code}: {login_response.text}")
+                    #sys.exit()            
 
-
-            # typhoon_wind.rename(columns={"adm3_pcode": "placeCode","v_max": "amount"},inplace=True) 
-            # out = typhoon_wind.to_json(orient='records')
-            
-            # exposure_data = {"countryCodeISO3": "PHL"}  
-            # exposure_data["exposurePlaceCodes"] = out
-            # exposure_data["adminLevel"] = 3 
-            # exposure_data["leadTime"] = landfall_time_hr 
-            # exposure_data["dynamicIndicator"] = "f" 
-            # exposure_data["disasterType"] = "typhoon"
-            # exposure_data["eventName"] = typhoon_names               
-            
-            # with open(main_path+f"forecast/triggers/windspeed_{typhoon_names}.json", 'w') as fp:
-                # fp.write(exposure_data)
-            # typhoon_wind=typhoon_windAll[['adm3_pcode','dis_track_min']]
-            # typhoon_wind['alert']=typhoon_wind['dis_track_min'].apply(lambda x:'Yes' if x< 100 else 'No')
-            
-            # typhoon_wind.rename(columns={"adm3_pcode": "placeCode","alert": "amount"},inplace=True) 
-            # out = typhoon_wind.to_json(orient='records')
-            # exposure_data = {"countryCodeISO3": "PHL"}  
-            # exposure_data["exposurePlaceCodes"] = out
-            # exposure_data["adminLevel"] = 3 
-            # exposure_data["leadTime"] = landfall_time_hr 
-            # exposure_data["dynamicIndicator"] = "alert_threshold" 
-            # exposure_data["disasterType"] = "typhoon"
-            # exposure_data["eventName"] = typhoon_names
-            
-            # with open(main_path+f"forecast/triggers/alert_threshold_{typhoon_names}.json", 'w') as fp:
-                # fp.write(exposure_data)
-            # #max_06h_rain,max_24h_rain,Mun_Code
-            # typhoon_rainfall=fc.rainfall_data[typhoon_names][['Mun_Code','max_24h_rain']]
-            # typhoon_rainfall.rename(columns={"Mun_Code": "placeCode","max_24h_rain": "amount"},inplace=True)   
-            # out = typhoon_rainfall.to_json(orient='records')
-            # exposure_data = {"countryCodeISO3": "PHL"}  
-            # exposure_data["exposurePlaceCodes"] = out
-            # exposure_data["adminLevel"] = 3 
-            # exposure_data["leadTime"] = landfall_time_hr 
-            # exposure_data["dynamicIndicator"] = "rainfall" 
-            # exposure_data["disasterType"] = "typhoon"
-            # exposure_data["eventName"] = typhoon_names
-            # with open(main_path+f"forecast/triggers/rainfall_{typhoon_names}.json", 'w') as fp:
-                # fp.write(exposure_data)                
-                        
-            # #"","adm3_en","glat","adm3_pcode","adm2_pcode","adm1_pcode","glon","GEN_mun_code","probability_dist50","impact","WEA_dist_track"
-            # with open (fc.Output_folder+"Average_Impact_"+fc.date_dir+"_"+typhoon_names+".csv") as csv_file2:
-                # impact=pd.read_csv(csv_file2)
-            # impact_df=impact["adm3_pcode","impact"]
-            # impact_df.rename(columns={"adm3_pcode": "placeCode","impact": "amount"},inplace=True)            
-            
-            # out = impact_df.to_json(orient='records')
-            
-            # exposure_data = {"countryCodeISO3": "PHL"}  
-            # exposure_data["exposurePlaceCodes"] = out
-            # exposure_data["adminLevel"] = 3 
-            # exposure_data["leadTime"] = landfall_time_hr 
-            # exposure_data["dynamicIndicator"] = "house_affected" 
-            # exposure_data["disasterType"] = "typhoon"
-            # exposure_data["eventName"] = typhoon_names
-            
-            # with open(main_path+f"forecast/triggers/house_affected_{typhoon_names}.json", 'w') as fp:
-                # fp.write(exposure_data)
-            # prob_50_df=impact["adm3_pcode","probability_dist50"]
-            # prob_50_df.rename(columns={"adm3_pcode": "placeCode","probability_dist50": "amount"},inplace=True)            
-            # out = prob_50_df.to_json(orient='records')
-            
-            # exposure_data = {"countryCodeISO3": "PHL"}  
-            # exposure_data["exposurePlaceCodes"] = out
-            # exposure_data["adminLevel"] = 3 
-            # exposure_data["leadTime"] = landfall_time_hr 
-            # exposure_data["dynamicIndicator"] = "prob_within_50km" 
-            # exposure_data["disasterType"] = "typhoon"
-            # exposure_data["eventName"] = typhoon_names
-            
-            # with open(main_path+f"forecast/triggers/prob_within_50km_{typhoon_names}.json", 'w') as fp:
-                # fp.write(exposure_data)
-                
 
  
 

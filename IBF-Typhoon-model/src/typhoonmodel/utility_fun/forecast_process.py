@@ -84,14 +84,16 @@ class Forecast:
             #Rainfall_data_window.download_rainfall_nomads(Input_folder,path,Alternative_data_point)
             Rainfall_data.download_rainfall_nomads(self.Input_folder,self.main_path,self.Alternative_data_point)
             rainfall_error=False
-            self.rainfall_data=pd.read_csv(os.path.join(self.Input_folder, "rainfall/rain_data.csv"))
+            #self.rainfall_data=pd.read_csv(os.path.join(self.Input_folder, "rainfall/rain_data.csv"))
         except:
             traceback.print_exc()
             #logger.warning(f'Rainfall download failed, performing download in R script')
             logger.info(f'Rainfall download failed, performing download in R script')
-            rainfall_error=True
-            self.rainfall_data=[]
+            rainfall_error=True            
+            #self.rainfall_data=[]
         ###### download UCL data
+        self.rainfall_data=pd.read_csv(os.path.join(self.Input_folder, "rainfall/rain_data.csv"))
+        self.rainfall_error=rainfall_error
           
         try:
             ucl_data.create_ucl_metadata(self.main_path, 
@@ -107,7 +109,9 @@ class Forecast:
         cent.set_raster_from_pnt_bounds((118,6,127,19), res=0.05)
         cent.check()
         cent.plot()
-        admin=gpd.read_file(os.path.join(self.main_path,"./data-raw/phl_admin3_simpl2.geojson"))
+        admin=gpd.read_file(os.path.join(self.main_path,"data/gis_data/phl_admin3_simpl2.geojson"))
+        pcode=gpd.read_file(os.path.join(self.main_path,"data/pre_disaster_indicators/pcode.csv"))
+        self.pcode=pcode
         df = pd.DataFrame(data=cent.coord)
         df["centroid_id"] = "id"+(df.index).astype(str)  
         centroid_idx=df["centroid_id"].values
@@ -152,7 +156,7 @@ class Forecast:
         for typhoons in self.Activetyphoon:
             #typhoons=Activetyphoon[0]
             logger.info(f'Processing data {typhoons}')
-            fname=open(os.path.join(self.main_path,'forecast/Input/',"typhoon_info_for_model.csv"),'w')
+            fname=open(os.path.join(self.main_path,'forecast/Input/',"typhoon_info_for_model1.csv"),'w')
             fname.write('source,filename,event,time'+'\n')   
             if not rainfall_error:
                 line_='Rainfall,'+'%srainfall' % self.Input_folder +',' +typhoons+','+ self.date_dir  #StormName #
@@ -296,40 +300,40 @@ class Forecast:
             fname.close()
             
             
-            #############################################################
-            #### Run IBF model 
-            #############################################################
-            os.chdir(self.main_path)
+            # #############################################################
+            # #### Run IBF model 
+            # #############################################################
+            # os.chdir(self.main_path)
             
-            if platform == "linux" or platform == "linux2": #check if running on linux or windows os
-                # linux
-                try:
-                    p = subprocess.check_call(["Rscript", "run_model_V2.R", str(rainfall_error)])
-                except subprocess.CalledProcessError as e:
-                    logger.error(f'failed to excute R sript')
-                    raise ValueError(str(e))
-            elif platform == "win32": #if OS is windows edit the path for Rscript
-                try:
-                    p = subprocess.check_call(["C:/Program Files/R/R-4.1.0/bin/Rscript", "run_model_V2.R", str(rainfall_error)])
-                except subprocess.CalledProcessError as e:
-                    logger.error(f'failed to excute R sript')
-                    raise ValueError(str(e))
+            # if platform == "linux" or platform == "linux2": #check if running on linux or windows os
+                # # linux
+                # try:
+                    # p = subprocess.check_call(["Rscript", "run_model_V2.R", str(rainfall_error)])
+                # except subprocess.CalledProcessError as e:
+                    # logger.error(f'failed to excute R sript')
+                    # raise ValueError(str(e))
+            # elif platform == "win32": #if OS is windows edit the path for Rscript
+                # try:
+                    # p = subprocess.check_call(["C:/Program Files/R/R-4.1.0/bin/Rscript", "run_model_V2.R", str(rainfall_error)])
+                # except subprocess.CalledProcessError as e:
+                    # logger.error(f'failed to excute R sript')
+                    # raise ValueError(str(e))
                     
-            data_filenames = list(Path(Output_folder).glob('*.csv'))
-            image_filenames = list(Path(Output_folder).glob('*.png'))
-            self.data_filenames_list[typhoons]=data_filenames
-            self.image_filenames_list[typhoons]=image_filenames
-            ##################### upload model output to 510 datalack ############## 
+            # data_filenames = list(Path(Output_folder).glob('*.csv'))
+            # image_filenames = list(Path(Output_folder).glob('*.png'))
+            # self.data_filenames_list[typhoons]=data_filenames
+            # self.image_filenames_list[typhoons]=image_filenames
+            # ##################### upload model output to 510 datalack ############## 
             
-            file_service = FileService(account_name=self.AZURE_STORAGE_ACCOUNT,protocol='https', connection_string=self.AZURE_CONNECTING_STRING)
-            file_service.create_share('forecast')
-            OutPutFolder=date_dir
-            file_service.create_directory('forecast', OutPutFolder) 
+            # file_service = FileService(account_name=self.AZURE_STORAGE_ACCOUNT,protocol='https', connection_string=self.AZURE_CONNECTING_STRING)
+            # file_service.create_share('forecast')
+            # OutPutFolder=date_dir
+            # file_service.create_directory('forecast', OutPutFolder) 
         
-            for img_file in image_filenames:   
-                file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(img_file.parts[-1]),img_file, content_settings=ContentSettings(content_type='image/png'))
+            # for img_file in image_filenames:   
+                # file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(img_file.parts[-1]),img_file, content_settings=ContentSettings(content_type='image/png'))
 
-            for data_file in data_filenames:
-                file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(data_file.parts[-1]),data_file, content_settings=ContentSettings(content_type='text/csv'))
+            # for data_file in data_filenames:
+                # file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(data_file.parts[-1]),data_file, content_settings=ContentSettings(content_type='text/csv'))
                 
             

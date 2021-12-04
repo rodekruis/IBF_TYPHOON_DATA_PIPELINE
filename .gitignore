@@ -155,6 +155,6 @@ IBF-Typhoon-model/model_trigger.py
 IBF-Typhoon-model/credentials
 IBF-Typhoon-model/data
 analyis/Coding_files_thesis_Nele
-
+*.log
 local
 .Rproj.user
