@@ -489,8 +489,10 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
         geom = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lon, lat), crs=NE_CRS)
 
     pad = 20
-    bounds = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
+    bounds=(115.0,5.0,133.0,20.0)
+    bounds1 = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
               geom.total_bounds[2] + pad, geom.total_bounds[3] + pad)
+              
     coast = get_coastlines(bounds, 10).geometry
     coast = gpd.GeoDataFrame(geometry=coast, crs=NE_CRS)
     dist = np.empty(geom.shape[0])

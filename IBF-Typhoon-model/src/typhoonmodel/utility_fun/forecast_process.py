@@ -92,7 +92,7 @@ class Forecast:
             rainfall_error=True            
             #self.rainfall_data=[]
         ###### download UCL data
-        self.rainfall_data=pd.read_csv(os.path.join(self.Input_folder, "rainfall/rain_data.csv"))
+        #self.rainfall_data=pd.read_csv(os.path.join(self.Input_folder, "rainfall/rain_data.csv"))
         self.rainfall_error=rainfall_error
           
         try:
