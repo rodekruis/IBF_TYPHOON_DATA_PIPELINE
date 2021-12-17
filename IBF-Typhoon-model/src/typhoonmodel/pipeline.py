@@ -52,9 +52,9 @@ logger = logging.getLogger(__name__)
 @click.option('--path', default='./', help='main directory')
 @click.option('--remote_directory', default=None, help='remote directory for ECMWF forecast data') #'20210421120000'
 @click.option('--typhoonname', default=None, help='name for active typhoon')
-@click.option('--typhoonname', default=None, help='name for active typhoon')
 @click.option('--debug', is_flag=True, help='setting for DEBUG option')
-def main(path,debug,remote_directory,typhoonname):
+@click.option('--upload', is_flag=True, help='Upload outputs to storage account')
+def main(path,debug,upload,remote_directory,typhoonname):
     initialize.setup_cartopy()
     start_time = datetime.now()
     ############## Defult variables which will be updated if a typhoon is active 
@@ -337,7 +337,24 @@ def main(path,debug,remote_directory,typhoonname):
         exposure_data["disasterType"] = "typhoon"
         exposure_data["eventName"] = 'NA' 
         log.info('no active Typhoon')
+    
+
+
+    ##################### upload model output to 510 datalack ##############
+    if upload:
+        image_filenames = list(Path(fc.Output_folder).glob('*.png'))
+        data_filenames = list(Path(fc.Output_folder).glob('*.csv'))
+
+        file_service = FileService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"],protocol='https', connection_string=os.environ["AZURE_CONNECTING_STRING"])
+        file_service.create_share('forecast')
+        OutPutFolder = start_time.strftime("%Y%m%d%H")
+        file_service.create_directory('forecast', OutPutFolder) 
         
+        for img_file in image_filenames:   
+            file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(img_file.parts[-1]),img_file, content_settings=ContentSettings(content_type='image/png'))
+
+        for data_file in data_filenames:
+            file_service.create_file_from_path('forecast', OutPutFolder,os.fspath(data_file.parts[-1]),data_file, content_settings=ContentSettings(content_type='text/csv'))
 
     print('---------------------AUTOMATION SCRIPT FINISHED---------------------------------')
     print(str(datetime.now()))
