@@ -139,38 +139,22 @@ def post_noevent(admin_df, service_url, token):
     Function to use when there is no active typhoon
     '''
 
-    logging.info('post_output: sending output to dashboard')
-
     layer = 'alert_threshold'
     admin_level = 3
     leadtime_str = '72-hour'
     typhoonname = ""
 
-    # admin_df['show_admin_area']=0
+    admin_df["houses_affected"]=0
     admin_df["alert_threshold"]=0
     # exposure_data = {"countryCodeISO3": "PHL"}
-    exposure_place_codes=[]
-    for ix, row in admin_df.iterrows():
-        exposure_entry = {"placeCode": row["adm3_pcode"],
-                            "amount": row['alert_threshold']}
-        exposure_place_codes.append(exposure_entry)
-    # exposure_data["exposurePlaceCodes"] = exposure_place_codes
-    # exposure_data["disasterType"] = "typhoon"
-    # exposure_data["eventName"] = ""
-
-    # upload data
-    # upload_response = requests.post(service_url + 'admin-area-dynamic-data/exposure',
-    #                                 json=exposure_data,
-    #                                 headers={'Authorization': 'Bearer '+ token,
-    #                                             'Content-Type': 'application/json',
-    #                                             'Accept': 'application/json'}) 
-    # print(upload_response)
-    # logging.info(f"layer upload report {upload_response.status_code}")
-    # if upload_response.status_code >= 400:
-    #     logging.error(f"PIPELINE ERROR AT UPLOAD {upload_response.status_code}: {upload_response.text}")
-    # # logger.info('no active Typhoon')
-
-    exposure_to_api(service_url, token, admin_level, layer, exposure_place_codes, typhoonname, leadtime_str)
+    for layer in ["houses_affected", "alert_threshold"]:
+        logging.info(f'post_noevent: sending {layer} to dashboard')
+        exposure_place_codes=[]
+        for ix, row in admin_df.iterrows():
+            exposure_entry = {"placeCode": row["adm3_pcode"],
+                                "amount": row[layer]}
+            exposure_place_codes.append(exposure_entry)
+        exposure_to_api(service_url, token, admin_level, layer, exposure_place_codes, typhoonname, leadtime_str)
 
 
 
