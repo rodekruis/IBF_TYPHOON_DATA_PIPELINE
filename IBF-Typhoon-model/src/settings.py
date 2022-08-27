@@ -1,1 +1,2 @@
-GPM_USERNAME="akliludin@gmail.com"
+GPM_USERNAME=" "
+SOURCE_DIR = " /" #FOR CLIMADA

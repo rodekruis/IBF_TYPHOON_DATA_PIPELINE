@@ -151,6 +151,8 @@ class TCForecast(TCTracks):
             con.cwd(remote_dir)
 
             remotefiles = fnmatch.filter(con.nlst(), '*tropical_cyclone*')
+            remotefiles = fnmatch.filter(remotefiles, '*ECEP*')
+            
             if len(remotefiles) == 0:
                 # TODO: Make a PR in climada for this
                 msg = 'No tracks found at ftp://{}/{}'.format(ECMWF_FTP, remote_dir)
@@ -198,8 +200,8 @@ class TCForecast(TCTracks):
         if hasattr(file, 'read'):
             bufr = decoder.process(file.read())
         elif hasattr(file, 'read_bytes'):
-            bufr = decoder.process(file.read_bytes())
-        elif os.path.isfile(file):
+            bufr = decoder.process(file.read_bytes())        #elif os.path.isfile(file):
+        elif Path(file).exists():
             with open(file, 'rb') as i:
                 bufr = decoder.process(i.read())
         else:

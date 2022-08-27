@@ -313,7 +313,7 @@ def _fetch_conf(directories, config_name):
     return conf_dct
 
 
-SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
+SOURCE_DIR ="src/climada/"# Path(__file__).absolute().parent.parent.parent
 CONFIG_NAME = 'climada.conf'
 CONFIG = Config.from_dict(_fetch_conf([
     Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository

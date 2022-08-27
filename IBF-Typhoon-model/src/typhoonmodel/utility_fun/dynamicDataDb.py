@@ -6,7 +6,9 @@ import os
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
- 
+
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry  
  
 
 class DatabaseManager:
@@ -16,12 +18,23 @@ class DatabaseManager:
     def __init__(self, countryCodeISO3,admin_level):
         self.countryCodeISO3 = countryCodeISO3
         #self.leadTimeLabel = leadTimeLabel
-        self.triggerFolder = PIPELINE_OUTPUT + "triggers_rp_per_station/"
+        #self.triggerFolder = PIPELINE_OUTPUT + "triggers_rp_per_station/"
         #self.affectedFolder = PIPELINE_OUTPUT + "calculated_affected/"
         #self.EXPOSURE_DATA_SOURCES = SETTINGS[countryCodeISO3]['EXPOSURE_DATA_SOURCES']
-        self.ADMIN_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['PASSWORD']
+        self.ADMIN_PASSWORD = SETTINGS_SECRET[countryCodeISO3]['ADMIN_PASSWORD']
+        self.ADMIN_LOGIN=SETTINGS_SECRET[countryCodeISO3]["ADMIN_LOGIN"]
         self.API_SERVICE_URL = SETTINGS_SECRET[countryCodeISO3]['IBF_API_URL'] 
         self.admin_level = admin_level
+        
+        self.mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
+        self.mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
+        self.mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
+        self.mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
+ 
+ 
+        #ADMIN_LOGIN=SETTINGS_SECRET[countryCodeISO3]["ADMIN_LOGIN"]
+        #ADMIN_PASSWORD=SETTINGS_SECRET[countryCodeISO3]["ADMIN_PASSWORD"]
+        #IBF_API_URL=SETTINGS_SECRET[countryCodeISO3]["IBF_API_URL"]
 
     def upload(self):
         self.uploadTriggersPerLeadTime()
@@ -29,6 +42,16 @@ class DatabaseManager:
         self.uploadCalculatedAffected()
         self.uploadRasterFile()
     
+    def sendNotificationTyphoon(self):
+        if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"]:
+            body = {
+                'countryCodeISO3': self.countryCodeISO3,
+                'disasterType': self.getDisasterType()
+                }
+            self.apiPostRequest('notification/send', body=body)
+            
+            logger.info('email notification sent')
+            
     def sendNotification(self):
         leadTimes = SETTINGS[self.countryCodeISO3]['lead_times']
         max_leadTime = max(leadTimes, key=leadTimes.get)
@@ -39,11 +62,28 @@ class DatabaseManager:
                 'disasterType': self.getDisasterType()
             } 
             self.apiPostRequest('notification/send', body=body)
-
     
     def getDisasterType(self):
-        disasterType = 'floods'
+        disasterType = "typhoon"
         return disasterType
+        
+    def uploadTyphoonData(self,json_path):  
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","alert_threshold","show_admin_area"]:
+            json_file_path =json_path +f'_{indicator}' + '.json'
+            with open(json_file_path) as json_file:
+                body = json.load(json_file)
+                #body['adminLevel'] = self.admin_level
+                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+            logger.info(f'Uploaded data for indicator: {indicator} ')
+
+    def uploadTyphoonData_no_event(self,json_path):  
+        for indicator in ["houses_affected","alert_threshold"]:
+            json_file_path =json_path +f'_{indicator}' + '.json'
+            with open(json_file_path) as json_file:
+                body = json.load(json_file)
+                #body['adminLevel'] = self.admin_level
+                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+            logger.info(f'Uploaded data for indicator: {indicator} ')
     def uploadCalculatedAffected(self):
         for adminlevels in SETTINGS[self.countryCodeISO3]['levels']:#range(1,self.admin_level+1):            
             for indicator, values in self.EXPOSURE_DATA_SOURCES.items():
@@ -69,6 +109,14 @@ class DatabaseManager:
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info(f'Uploaded calculated_affected for indicator: {indicator}' +'for admin level: ' + str(adminlevels))
                                     
+    def uploadTrackData(self,json_path):
+        json_file_path =json_path +'_tracks' + '.json'
+        with open(json_file_path) as json_file:
+            track_records = json.load(json_file)
+        disasterType = self.getDisasterType()
+        body=track_records
+        self.apiPostRequest('typhoon-track/', body=body)
+        logger.info(f'Uploaded track_data: {json_file_path}')
                     
 
     def uploadRasterFile(self):
@@ -117,38 +165,69 @@ class DatabaseManager:
         logger.info('Uploaded triggers per leadTime')
 
     def apiGetRequest(self, path, countryCodeISO3):
+        from urllib3.util.retry import Retry  
         TOKEN = self.apiAuthenticate()
+        
+        session = requests.Session()
+        retry = Retry(connect=3, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        
+        response = session.get(
+            self.API_SERVICE_URL + path + '/' + countryCodeISO3,
+            headers={'Authorization': 'Bearer ' + TOKEN}
+        )
 
+        '''
         response = requests.get(
             self.API_SERVICE_URL + path + '/' + countryCodeISO3,
             headers={'Authorization': 'Bearer ' + TOKEN}
         )
+        '''
         data = response.json()
         return(data)
 
     def apiPostRequest(self, path, body=None, files=None):
         TOKEN = self.apiAuthenticate()
+        from urllib3.util.retry import Retry
 
         if body != None:
             headers={'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json', 'Accept': 'application/json'}
         elif files != None:
             headers={'Authorization': 'Bearer ' + TOKEN}
-
+        '''
         r = requests.post(
             self.API_SERVICE_URL + path,
             json=body,
             files=files,
             headers=headers
         )
+        '''
+        session = requests.Session()
+        retry = Retry(connect=3, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+      
+
+        r = session.post(
+            self.API_SERVICE_URL + path,
+            json=body,
+            files=files,
+            headers=headers
+        )
+         
         if r.status_code >= 400:
             #logger.info(r.text)
             logger.error("PIPELINE ERROR")
             raise ValueError()
 
+
     def apiAuthenticate(self):
         API_LOGIN_URL=self.API_SERVICE_URL+'user/login'
         login_response = requests.post(API_LOGIN_URL, data=[(
-            'email', ADMIN_LOGIN), ('password', self.ADMIN_PASSWORD)])
+            'email', self.ADMIN_LOGIN), ('password', self.ADMIN_PASSWORD)])
         return login_response.json()['user']['token']
 
     def getDataFromDatalake(self, path):
