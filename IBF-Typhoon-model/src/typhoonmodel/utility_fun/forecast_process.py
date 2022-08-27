@@ -1024,6 +1024,7 @@ class Forecast:
         # track
 
         exposure_place_codes = []
+        wind_track.dropna(inplace=True)
         wind_track = wind_track.round(2)
 
         for ix, row in wind_track.iterrows():

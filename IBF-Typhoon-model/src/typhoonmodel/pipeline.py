@@ -101,7 +101,7 @@ def main():
 
             #if there is no active typhoon 
             else: #
-                log.info('no active Typhoon')
+                logger.info('no active Typhoon')
                 df_total_upload=fc.pcode #data frame with pcodes 
                 typhoon_names='null'
                 df_total_upload['alert_threshold']=0
@@ -132,7 +132,7 @@ def main():
                         
                 #upload typhoon data        
                 json_path = fc.Output_folder  + typhoon_names
-                fc.db.uploadTyphoonData_no_event()                
+                fc.db.uploadTyphoonData_no_event(json_path)                
                         
 
     print('---------------------AUTOMATION SCRIPT FINISHED---------------------------------')
