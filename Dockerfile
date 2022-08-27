@@ -28,12 +28,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get purge --auto-remove \
     && apt-get clean
 
+#gdal-bin libgdal-dev \
+	
 RUN add-apt-repository ppa:ubuntugis/ppa \
     && apt-get update \
     && apt-get install --no-install-recommends -y \
     python-numpy \
-    gdal-bin \
-    libgdal-dev \
     postgresql-client \
 	libproj-dev \
     libgeos-dev \
@@ -61,11 +61,6 @@ RUN apt-get update && apt-get -y upgrade && \
     apt-get install -y azure-cli && \
     rm -rf /var/lib/apt/lists/*
 	
-
-# Install additional R-packages
- RUN Rscript -e \
-    "install.packages(c('tmap', 'dplyr', 'tidyr', 'sf', 'geojsonsf', 'raster', \
-    'rlang', 'lubridate', 'ncdf4', 'xgboost', 'huxtable', 'readr'))"
 
 # update pip
 RUN python3 -m pip install --no-cache-dir \
