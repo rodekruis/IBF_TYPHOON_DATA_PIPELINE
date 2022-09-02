@@ -25,7 +25,7 @@ import numpy as np
 from geopandas.tools import sjoin
 import geopandas as gpd
 import json
-
+import zipfile
 from climada.hazard import Centroids, TropCyclone,TCTracks
 from climada.hazard.tc_tracks_forecast import TCForecast
 from shapely.geometry import Point, Polygon, MultiPolygon, box
@@ -58,6 +58,21 @@ logger = logging.getLogger(__name__)
 def main():
     initialize.setup_cartopy()
     start_time = datetime.now()
+    
+    dbm_ = DatabaseManager(countryCodeISO3,admin_level)
+    filename='data.zip'
+    path = 'typhoon/Gold/ibfdatapipeline/'+ filename
+    #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
+    DataFile = dbm_.getDataFromDatalake(path)
+    if DataFile.status_code >= 400:
+        raise ValueError()
+    open('./' + filename, 'wb').write(DataFile.content)
+    path_to_zip_file='./'+filename
+    with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
+        zip_ref.extractall('./data')
+        
+    logger.info('finished data download')
+    
     ############## Defult variables which will be updated if a typhoon is active 
     print('---------------------AUTOMATION SCRIPT STARTED---------------------------------')
     print(str(start_time))
