@@ -13,3 +13,6 @@ skill_analysis
 trigger_level_analysis
 venv
 local
+IBF-Typhoon-model/models/other_models/*
+IBF-Typhoon-model/data/*
+
