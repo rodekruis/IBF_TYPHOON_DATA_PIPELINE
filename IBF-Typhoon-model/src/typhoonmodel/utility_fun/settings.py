@@ -72,6 +72,7 @@ SETTINGS_SECRET = {
 ###################
 ## PATH SETTINGS ##
 ###################
+
 start_time = datetime.now()
 MAIN_DIRECTORY='/home/fbf/'
 
@@ -79,29 +80,27 @@ MAIN_DIRECTORY='/home/fbf/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
-
-
-
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
 ecmwf_remote_directory=None#'20220822000000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-#ecmwf_remote_directory=None#(start_time - timedelta(hours=24)).strftime("%Y%m%d000000")#None#'20220714120000'
+
+#ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
 
 Active_Typhoon_event_list=['10W']
+WIND_SPEED_THRESHOLD=0
+
+
 
 Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
 data_point = start_time.strftime("%Y%m%d")      
 
 Input_folder = MAIN_DIRECTORY+ 'forecast/Input/'
-
 Output_folder = MAIN_DIRECTORY+ 'forecast/Output/'
 ECMWF_folder = MAIN_DIRECTORY+'forecast/Input/ECMWF/'
 rainfall_path = MAIN_DIRECTORY+'forecast/Input/rainfall/'
 mock_data_path = MAIN_DIRECTORY+'data/mock/'
 ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
-WIND_SPEED_THRESHOLD=0
-
 if not os.path.exists(Input_folder):
     os.makedirs(Input_folder)
 if not os.path.exists(Output_folder):

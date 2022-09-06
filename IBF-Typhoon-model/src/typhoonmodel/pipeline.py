@@ -59,7 +59,7 @@ def main():
     initialize.setup_cartopy()
     start_time = datetime.now()
     
-    dbm_ = DatabaseManager(countryCodeISO3,admin_level)
+    dbm_ = DatabaseManager(countryCodeISO3='PHL',admin_level=3)
     filename='data.zip'
     path = 'typhoon/Gold/ibfdatapipeline/'+ filename
     #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
@@ -84,11 +84,29 @@ def main():
         mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
         mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
         mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
+        
+        # Download data 
+        #dbm_ = DatabaseManager(countryCodeISO3,admin_level)
+        db = DatabaseManager(countryCodeISO3,admin_level)
+        
+        filename='data.zip'
+        path = 'typhoon/Gold/ibfdatapipeline/'+ filename
+        #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
+        DataFile = db.getDataFromDatalake(path)
+        if DataFile.status_code >= 400:
+            raise ValueError()
+        open('./' + filename, 'wb').write(DataFile.content)
+        path_to_zip_file='./'+filename
+        
+        with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
+            zip_ref.extractall('./data')
+            
+        logger.info('finished data download')
 
         ###############################################################
         ####  check setting for mock data 
         if mock:
-            db = DatabaseManager(countryCodeISO3,admin_level)
+            #db = DatabaseManager(countryCodeISO3,admin_level)
             if mock_trigger:
                 typhoon_names=mock_trigger_typhoon_event
             else:
