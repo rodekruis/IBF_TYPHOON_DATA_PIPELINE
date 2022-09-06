@@ -74,7 +74,7 @@ To run locally:
     unless you specify a remote directory and typhoon name. 
 
 <!-- Running Pipeline With Docker -->
-## Running With Docker
+## Running With Docker on local machine 
 
 You will need to have `docker` and `docker-compose` installed.
 You need to create an environment variable called `TYPHOONMODEL_OUTPUT` that contains
@@ -94,6 +94,11 @@ When you are finished, run
 docker-compose down
 ```
 to remove any docker container(s).
+
+## Running with Docker on Azure logicapp
+
+Follow the instraction [here](https://docs.google.com/document/d/10E1BhPu55tjaPbSSACRQ0Ot2-8K-neAlPY5ex390Vu4/edit) there 
+is also a workflow in github action to update docker image in azure registery, which will be the image used in logic app.   
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments

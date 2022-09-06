@@ -34,8 +34,12 @@ try:
     ADMIN_LOGIN = os.environ['ADMIN_LOGIN']
     IBF_URL=os.environ['IBF_API_URL']
     #PHP_PASSWORD=os.environ['IBF_PASSWORD']
-    DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE-STORAGE-ACCOUNT-NAME']
-    DATALAKE_STORAGE_ACCOUNT_KEY = os.environ['DATALAKE-STORAGE-ACCOUNT-KEY']
+    DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE_STORAGE_ACCOUNT_NAME']        
+    DATALAKE_STORAGE_ACCOUNT_KEY_ = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
+    #DATALAKE_STORAGE_ACCOUNT_KEY_ =os.environ.get("DATALAKE-STORAGE-ACCOUNT-KEY")
+    print('Environment variables found.')
+    DATALAKE_STORAGE_ACCOUNT_KEY=f'{DATALAKE_STORAGE_ACCOUNT_KEY_}=='
+    
     DATALAKE_API_VERSION = '2018-11-09'
 except Exception as e:
     print('No environment variables found.')
