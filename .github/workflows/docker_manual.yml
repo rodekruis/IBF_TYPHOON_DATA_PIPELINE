@@ -1,4 +1,4 @@
-name: update Docker image
+name: manual update Docker image 
 
 on:
   workflow_dispatch:
