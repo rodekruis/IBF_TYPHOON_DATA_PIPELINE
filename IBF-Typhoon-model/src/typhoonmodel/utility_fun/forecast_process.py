@@ -585,10 +585,10 @@ class Forecast:
                 inten_tr['storm_id'] = tr.sid
                 inten_tr['name'] = tr.name
                 inten_tr['forecast_time']=tr.forecast_time
-                inten_tr['lead_time']=lead_time1
+                #inten_tr['lead_time']=lead_time1
                 list_intensity.append(inten_tr)
                 distan_track1=[]
-                for index, row in df.iterrows():
+                for index, row in self.dfGrids.iterrows():
                     dist=np.min(np.sqrt(np.square(tr.lat.values-row['lat'])+np.square(tr.lon.values-row['lon'])))
                     distan_track1.append(dist*111)
                 dist_tr = pd.DataFrame({'centroid_id': self.centroid_idx,'value': distan_track1})
