@@ -831,7 +831,7 @@ class Forecast:
 
 
         # Only select regions 5 and 8
-        cerf_regions = ["PH05", "PH08"]
+        cerf_regions = ["PH05", "PH08","PH16"]
         
         
         
