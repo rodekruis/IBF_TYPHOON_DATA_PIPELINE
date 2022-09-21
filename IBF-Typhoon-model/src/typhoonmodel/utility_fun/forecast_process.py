@@ -866,7 +866,6 @@ class Forecast:
             if  (trigger_stat_dref10 > values[0]):
                 trigger_stat_1=True
                 EAP_TRIGGERED = "yes"
-                EAP_TRIGGERED = "yes"
                 eap_status_bool = 1
  
             else:
