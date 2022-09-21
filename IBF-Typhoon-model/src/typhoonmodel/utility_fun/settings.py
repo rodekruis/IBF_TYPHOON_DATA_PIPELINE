@@ -78,9 +78,9 @@ SETTINGS_SECRET = {
 ###################
 
 start_time = datetime.now()
-#MAIN_DIRECTORY='/home/fbf/'
+MAIN_DIRECTORY='/home/fbf/'
 
-MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
+#MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
@@ -92,7 +92,7 @@ ecmwf_remote_directory='20220823000000'#None#(start_time - timedelta(hours=24)).
 typhoon_event_name=None
 
 Active_Typhoon_event_list=['MA-ON']
-WIND_SPEED_THRESHOLD=0
+WIND_SPEED_THRESHOLD=20
 
 
 
@@ -114,6 +114,7 @@ if not os.path.exists(ECMWF_folder):
 if not os.path.exists(rainfall_path):
     os.makedirs(rainfall_path)  
 
+Population_Growth_factor=1.15 #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
 
 Housing_unit_correction={'year':['2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022'],
                         'facor':[0.88,0.89,0.91,0.92,0.93,0.95,0.96,0.97,0.99,1.00,1.01,1.03,1.04,1.06,1.07,1.09,1.10]}

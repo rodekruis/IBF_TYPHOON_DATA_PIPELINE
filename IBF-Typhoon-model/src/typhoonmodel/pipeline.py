@@ -138,7 +138,9 @@ def main():
                 df_total_upload=fc.pcode #data frame with pcodes 
                 typhoon_names='null'
                 df_total_upload['alert_threshold']=0
-                df_total_upload['houses_affected']=0                
+                df_total_upload['houses_affected']=0 
+                
+                
                 
                 for layer in ["houses_affected","alert_threshold"]:
                     exposure_entry=[]
@@ -158,13 +160,14 @@ def main():
                     exposure_data["leadTime"] = "72-hour" #landfall_time_hr
                     exposure_data["dynamicIndicator"] = layer
                     exposure_data["disasterType"] = "typhoon"
-                    exposure_data["eventName"] = typhoon_names                     
-                    json_file_path = fc.Output_folder  + typhoon_names+ f'_{layer}' + '.json'
+                    exposure_data["eventName"] = 'null'                     
+                    json_file_path = fc.Output_folder  + f'null_{layer}' + '.json'
+                    
                     with open(json_file_path, 'w') as fp:
                         json.dump(exposure_data, fp)
                         
                 #upload typhoon data        
-                json_path = fc.Output_folder  + typhoon_names
+                json_path = fc.Output_folder
                 fc.db.uploadTyphoonData_no_event(json_path)                
                         
 

@@ -78,7 +78,7 @@ class DatabaseManager:
 
     def uploadTyphoonData_no_event(self,json_path):  
         for indicator in ["houses_affected","alert_threshold"]:
-            json_file_path =json_path +f'_{indicator}' + '.json'
+            json_file_path =json_path +f'null_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)
                 #body['adminLevel'] = self.admin_level

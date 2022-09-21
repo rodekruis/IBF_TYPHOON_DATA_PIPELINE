@@ -57,7 +57,7 @@ class Forecast:
         self.admin_level = admin_level
         self.remote_dir = remote_dir
         start_time = datetime.now()
-        self.Population_Growth_factor=1.15 #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
+        self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
         self.ECMWF_MAX_TRIES = 3
         self.ECMWF_SLEEP = 30  # s
         self.main_path = MAIN_DIRECTORY
@@ -549,10 +549,72 @@ class Forecast:
             MIN_DIST_TO_COAST = min(points_df['min_dist_to_coast'])
             data_forced = fcast_data_typ
 
+
+
         # calculate wind field for each ensamble members
+        if MIN_DIST_TO_COAST <200000:#in meters            
+            tracks = TCTracks()
+            tracks.data =data_forced # 
+            #tracks.equal_timestep(0.5)
+            TYphoon = TropCyclone()
+            TYphoon.set_from_tracks(tracks, self.cent, store_windfields=True,metric="geosphere")            
+            windfield=TYphoon.windfields
+            threshold = 20
+            list_intensity = []
+            distan_track = []
+            for i in range(len(data_forced)):
+                nsteps = windfield[i].shape[0]
+                tr=tracks.data[i]
+                centroid_id = np.tile(self.centroid_idx, nsteps)
+                intensity_3d = windfield[i].toarray().reshape(nsteps,  self.ncents, 2)
+                intensity = np.linalg.norm(intensity_3d, axis=-1).ravel()
+                timesteps = np.repeat(tracks.data[i].time.values, self.ncents)
+                timesteps = timesteps.reshape((nsteps,  self.ncents)).ravel()
+                inten_tr = pd.DataFrame({
+                        'centroid_id': centroid_id,
+                        'value': intensity,
+                        'timestamp': timesteps,})
+                inten_tr = inten_tr[inten_tr.value > threshold]
+                inten_tr['storm_id'] = tr.sid
+                inten_tr['name'] = tr.name
+                inten_tr = (pd.merge(inten_tr,  self.df_admin, how='outer', on='centroid_id')
+                            .dropna()
+                            .groupby(['adm3_pcode'], as_index=False)
+                            .agg({"value": ['count', 'max']}))
+                inten_tr.columns = [x for x in ['adm3_pcode', 'value_count', 'v_max']]
+                inten_tr['storm_id'] = tr.sid
+                inten_tr['name'] = tr.name
+                inten_tr['forecast_time']=tr.forecast_time
+                inten_tr['lead_time']=lead_time1
+                list_intensity.append(inten_tr)
+                distan_track1=[]
+                for index, row in df.iterrows():
+                    dist=np.min(np.sqrt(np.square(tr.lat.values-row['lat'])+np.square(tr.lon.values-row['lon'])))
+                    distan_track1.append(dist*111)
+                dist_tr = pd.DataFrame({'centroid_id': self.centroid_idx,'value': distan_track1})
+                dist_tr = (pd.merge(dist_tr, self.df_admin, how='outer', on='centroid_id')
+                            .dropna()
+                            .groupby(['adm3_pcode'], as_index=False)
+                            .agg({'value': 'min'}))
+                dist_tr.columns = [x for x in ['adm3_pcode', 'dis_track_min']]  # join_left_df_.columns.ravel()]
+                dist_tr['storm_id'] = tr.sid	
+                distan_track.append(dist_tr)
+            df_intensity_ = pd.concat(list_intensity)
+            distan_track1 = pd.concat(distan_track)
+            typhhon_df =  pd.merge(df_intensity_, distan_track1,  how='left', on=['adm3_pcode','storm_id'])
+            if len(typhhon_df.index > 1):
+                typhhon_df.rename(
+                    columns={"v_max": "HAZ_v_max", "dis_track_min": "HAZ_dis_track_min"},
+                    inplace=True,
+                )
+                typhhon_wind_data = typhhon_df
+                # Activetyphoon.append(typhoons)
+                typhhon_df.to_csv(
+                    os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),
+                    index=False)
+        '''
         list_intensity = []
         distan_track = []
-        
         if MIN_DIST_TO_COAST <200000:            #in meters            
             for tr in data_forced:
                 logger.info(
@@ -565,7 +627,6 @@ class Forecast:
                 # tr = track.data[0]
                 typhoon.set_from_tracks(track, self.cent, store_windfields=True)
                 # Make intensity plot using the high resolution member
-
                 windfield = typhoon.windfields
                 nsteps = windfield[0].shape[0]
                 
@@ -598,7 +659,6 @@ class Forecast:
                 inten_tr["is_ensamble"] = tr.is_ensemble
                 list_intensity.append(inten_tr)
                 distan_track1 = []
-
                 for index, row in self.dfGrids.iterrows():
                     dist = np.min(
                         np.sqrt(
@@ -623,14 +683,12 @@ class Forecast:
                     x for x in ["adm3_pcode", "name", "storm_id", "dis_track_min"]
                 ]  # join_left_df_.columns.ravel()]
                 distan_track.append(dist_tr)
-
             df_intensity_ = pd.concat(list_intensity)
             distan_track1 = pd.concat(distan_track)
             typhhon_df = pd.merge(
                 df_intensity_, distan_track1, how="left", on=["adm3_pcode", "storm_id"]
             )
             if len(typhhon_df.index > 1):
-
                 typhhon_df.rename(
                     columns={"v_max": "HAZ_v_max", "dis_track_min": "HAZ_dis_track_min"},
                     inplace=True,
@@ -640,8 +698,7 @@ class Forecast:
                 typhhon_df.to_csv(
                     os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),
                     index=False,
-                )
-
+                )'''
 
 
     def impact_model(self, typhoon_names,wind_data):
@@ -721,7 +778,11 @@ class Forecast:
         df_impact_forecast["Damage_predicted_num"] = df_impact_forecast["Damage_predicted_num"].astype("int")   
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["Damage_predicted_num"].astype("int") 
         
-        impact = df_impact_forecast.groupby("Mun_Code").agg(
+        impact = df_impact_forecast.copy()
+        impact2 = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
+        
+        
+        impact =impact.groupby("Mun_Code").agg(
             {"Damage_predicted": "mean","VUL_Housing_Units":"mean","HAZ_dis_track_min": "min","HAZ_v_max":"max"}
         )
         
@@ -734,8 +795,7 @@ class Forecast:
         impact.to_csv(csv_file_test)
         
         check_ensamble=False
-        impact2 = df_impact_forecast.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
-        
+ 
         impact_df1 = pd.merge(
             impact2,
             probability_50km,
@@ -843,7 +903,7 @@ class Forecast:
         
         probability_impact=df_impact_forecast.groupby('storm_id').agg(
                 NUmber_of_affected_municipality=('Mun_Code','count'),
-                average_ML_Model=('DMG_predicted', 'mean'),
+                average_ML_Model=('Damage_predicted', 'mean'),
                 Trigger_ML_Model=('Trigger', sum),
                 Total_affected_ML_Model=('number_affected_pop__prediction', sum),
                 Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
@@ -921,7 +981,7 @@ class Forecast:
         
         #START Trigger Status 
         start_trigger_status = {}
-        #start_regions = {'PH166700000':'surigaodelnorte', 'PH021500000':'cagayan', 'PH082600000':'EasternSamar'}
+        
         provinces_names={'PH166700000':'SurigaoDeLnorte','PH021500000':'Cagayan','PH082600000':'EasternSamar'}        
         df_impact_forecast['Prov_Code']=df_impact_forecast.apply(lambda x:str(x.Mun_Code[:6])+'00000',axis=1)
        
@@ -932,7 +992,7 @@ class Forecast:
             if not df_trig.empty:  
                 probability_impact=df_trig.groupby(['storm_id']).agg(
                     NUmber_of_affected_municipality=('Mun_Code','count'),
-                    average_ML_Model=('DMG_predicted', 'mean'),
+                    average_ML_Model=('Damage_predicted', 'mean'),
                     Total_affected_ML_Model=('number_affected_pop__prediction', sum),
                     Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
                 ######## calculate probability for impact                
