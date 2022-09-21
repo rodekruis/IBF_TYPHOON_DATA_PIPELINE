@@ -586,6 +586,8 @@ class Forecast:
                 inten_tr['name'] = tr.name
                 inten_tr['forecast_time']=tr.forecast_time
                 #inten_tr['lead_time']=lead_time1
+                inten_tr["ens_id"] = tr.sid + "_" + str(tr.ensemble_number)
+                inten_tr['is_ensamble'] = tr.is_ensemble
                 list_intensity.append(inten_tr)
                 distan_track1=[]
                 for index, row in self.dfGrids.iterrows():
@@ -706,14 +708,14 @@ class Forecast:
             "adm3_pcode",   
             "storm_id",
             "name",
-            "HAZ_max_06h_rain",
-            "HAZ_rainfall_max_24h",
+            #"HAZ_max_06h_rain",
+            #"HAZ_rainfall_max_24h",
             "HAZ_v_max",
             "is_ensamble",
             "HAZ_dis_track_min",
         ]
 
-
+        '''
         df_hazard = pd.merge(
             wind_data,
             self.rainfall_data,
@@ -721,7 +723,9 @@ class Forecast:
             left_on="adm3_pcode",
             right_on="adm3_pcode",
         ).filter(selected_columns)
-
+        '''
+        df_hazard =wind_data.filter(selected_columns)
+        
         df_total = pd.merge(
             df_hazard,
             self.pre_disaster_inds,
@@ -779,6 +783,7 @@ class Forecast:
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["Damage_predicted_num"].astype("int") 
         
         impact = df_impact_forecast.copy()
+        check_ensamble=False
         impact2 = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
         
         
@@ -794,7 +799,7 @@ class Forecast:
         csv_file_test = self.Output_folder + "Average_Impact_full_" + typhoon_names + ".csv"        
         impact.to_csv(csv_file_test)
         
-        check_ensamble=False
+  
  
         impact_df1 = pd.merge(
             impact2,
