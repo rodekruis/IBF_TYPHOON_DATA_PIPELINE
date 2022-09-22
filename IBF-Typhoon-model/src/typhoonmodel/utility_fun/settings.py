@@ -86,12 +86,12 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory='20220823000000'#None#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory=None#'20220922000000'#None#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
 
-Active_Typhoon_event_list=['MA-ON']
+Active_Typhoon_event_list=[]#'MA-ON']
 WIND_SPEED_THRESHOLD=20
 
 

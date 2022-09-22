@@ -142,16 +142,18 @@ class Forecast:
                 [
                     tr.name
                     for tr in FcastData
-                    if (
-                        np.nanmin(tr.lat.values) < 28
-                        and np.nanmax(tr.lat.values) > 4
-                        and np.nanmin(tr.lon.values) < 145
-                        and np.nanmax(tr.lon.values) > 114
+                    if ( 
+                        sum(~np.isnan(tr.max_sustained_wind.values))> sum(np.isnan(tr.max_sustained_wind.values)) 
+                        and np.nanmin(tr.lat.values) < 21
+                        and np.nanmax(tr.lat.values) > 5
+                        and np.nanmin(tr.lon.values) < 130
+                        and np.nanmax(tr.lon.values) > 116
                         and tr.is_ensemble == "False"
                     )
                 ]
             )
         )
+        
         self.TropicalCycloneAdvisoryDomain_events=TropicalCycloneAdvisoryDomain_events
 
         fcast_data = [
@@ -426,8 +428,13 @@ class Forecast:
         '''
         calclate the number of affected population
         '''
-        Number_affected_pop=int(np.exp(6.80943612231606) * buildings ** 0.46982114400549513)
-        return Number_affected_pop
+        import math
+        import numpy as np
+        if math.isnan(buildings):
+            return np.nan
+        else:            
+            Number_affected_pop=int(np.exp(6.80943612231606) * buildings ** 0.46982114400549513)
+            return Number_affected_pop
     
     def windfieldData(self, typhoons):
         tr_HRS = [
@@ -921,11 +928,12 @@ class Forecast:
         trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
         EAP_TRIGGERED = "no"
         eap_status_bool=0
+        Trigger_status=True
  
      
 
         for key, values in dref_probabilities_10.items():
-            inx_3=inx_3+1
+ 
             dref_trigger_status10 = {}
             thershold=values[1]
             if  (trigger_stat_dref10 > values[0]):
@@ -958,7 +966,7 @@ class Forecast:
         
         #probability based on number of buildings 
         dref_trigger_status = {}
-        Trigger_status=True
+        
         
         agg_impact = probability_impact["Total_buildings_ML_Model"].values
     
@@ -1007,7 +1015,7 @@ class Forecast:
                 
 
                 for key, values in triggers.items():
-                    inx_=inx_+1
+                
                     start_trigger_status1 = {}
                     trigger_stat = 100*(sum(i > values[0] for i in agg_impact) /len(agg_impact)       )
                     #start_trigger_status1[key] = int(trigger_stat)
