@@ -91,7 +91,7 @@ High_resoluation_only_Switch=True
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
 
-Active_Typhoon_event_list=['NORU']#'MA-ON']
+Active_Typhoon_event_list=[]#'MA-ON']
 WIND_SPEED_THRESHOLD=20
 
 
