@@ -155,10 +155,17 @@ class Forecast:
         )
         
         self.TropicalCycloneAdvisoryDomain_events=TropicalCycloneAdvisoryDomain_events
+        
+        #FcastData = [tr for tr in FcastData if (tr.is_ensemble == "False")] limit running in azure logic
+        if High_resoluation_only_Switch:
+            Data_to_process = [tr for tr in FcastData if (tr.is_ensemble == "False")]
+        else:
+            Data_to_process =FcastData        
+        
 
         fcast_data = [
             track_data_clean.track_data_clean(tr)
-            for tr in FcastData
+            for tr in Data_to_process
             if (tr.time.size > 1 and tr.name in TropicalCycloneAdvisoryDomain_events)
         ]
 
@@ -352,8 +359,25 @@ class Forecast:
         
         df_total.loc[df_total['HAZ_dis_track_min'] > 300, 'Damage_predicted'] = 0
         
-        return df_total.filter(["Damage_predicted", "Trigger","Mun_Code", "storm_id", "HAZ_dis_track_min","HAZ_v_max","is_ensamble"])
+        df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+        probability_impact=df_total.groupby('Mun_Code').agg(
+                                    dist50k=('dist_50', sum),
+                                    Num_ens=('dist_50', 'count')).reset_index()
+        probability_impact["prob_within_50km"] = probability_impact.apply(lambda x: x.dist50k/x.Num_ens,axis=1)
 
+
+        df_total = pd.merge(df_total,probability_impact.filter(['prob_within_50km','Mun_Code']),how="left",
+            left_on="Mun_Code",
+            right_on="Mun_Code")
+        final_df=df_total.filter(["Damage_predicted", "Trigger","Mun_Code", "storm_id","ens_id", "HAZ_dis_track_min","HAZ_v_max","is_ensamble","prob_within_50km"])
+        
+        
+        
+        return final_df
+        
+
+                
+        
     def set_zeros(self, x):
         x_max = 25
         y_max = 50
@@ -714,6 +738,7 @@ class Forecast:
         selected_columns = [
             "adm3_pcode",   
             "storm_id",
+            "ens_id"
             "name",
             #"HAZ_max_06h_rain",
             #"HAZ_rainfall_max_24h",
@@ -743,12 +768,11 @@ class Forecast:
 
         df_total = df_total[df_total["HAZ_v_max"].notnull()]
         
-        ######## calculate probability for track within 50km
-        df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1.923 if x < 50 else 0)
         
-        probability_50km = df_total.groupby("Mun_Code").agg({"dist_50": "sum"})
-        probability_50km.reset_index(inplace=True)
-
+        ######## calculate probability for track within 50km
+        #df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+        
+ 
         ### Run ML model
 
         impact_data = self.model(df_total)
@@ -790,8 +814,9 @@ class Forecast:
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["Damage_predicted_num"].astype("int") 
         
         impact = df_impact_forecast.copy()
+        
         check_ensamble=False
-        impact2 = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
+        impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
         
         
         impact =impact.groupby("Mun_Code").agg(
@@ -803,37 +828,30 @@ class Forecast:
         
           
         
-        csv_file_test = self.Output_folder + "Average_Impact_full_" + typhoon_names + ".csv"        
+        csv_file_test = self.Output_folder + "Average_Impact_average_" + typhoon_names + ".csv"        
         impact.to_csv(csv_file_test)
         
   
  
-        impact_df1 = pd.merge(
-            impact2,
-            probability_50km,
-            how="left",
-            left_on="Mun_Code",
-            right_on="Mun_Code",
-        )
+        impact_df1 =impact_HRS# pd.merge(impact2,probability_50km,how="left", left_on="Mun_Code", right_on="Mun_Code",    )
         
   
         
-        impact_df1.rename(
+        impact_HRS.rename(
             columns={
                 "Damage_predicted_num": "num_houses_affected",
                 "Damage_predicted": "houses_affected",
                 "HAZ_dis_track_min": "WEA_dist_track",
-                "dist_50": "prob_within_50km",
                 "HAZ_v_max": "windspeed",
             },
             inplace=True,
         )
         
-        logger.info(f"{len(impact_df1)}")
+        logger.info(f"{len(impact_HRS)}")
        
         impact_df = pd.merge(
             self.pcode,
-            impact_df1.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed"]),
+            impact_HRS.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed"]),
             how="left", left_on="adm3_pcode", right_on="Mun_Code"
         )
         impact_df["show_admin_area"] = impact_df["WEA_dist_track"].apply(
@@ -913,27 +931,24 @@ class Forecast:
        # probability_impact = df_impact_forecast.groupby("storm_id").agg(        {"Damage_predicted_num": "sum"}       )
         
         
-        probability_impact=df_impact_forecast.groupby('storm_id').agg(
+        probability_impact=df_impact_forecast.groupby('ens_id').agg(
                 NUmber_of_affected_municipality=('Mun_Code','count'),
-                average_ML_Model=('Damage_predicted', 'mean'),
-                Trigger_ML_Model=('Trigger', sum),
-                Total_affected_ML_Model=('number_affected_pop__prediction', sum),
-                Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
+                Trigger_ML_Model=('Trigger', sum)).reset_index()
             
         ### DREF trigger based on 10% damage per manucipality  
         DREF_trigger_list_10={}
+        
         probability_impact['Trigger']=probability_impact.apply(lambda x:1 if x.Trigger_ML_Model>2 else 0,axis=1)
         agg_impact_10 = probability_impact["Trigger"].values
         
-        trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
+        trigger_stat_dref10 = 100(sum(agg_impact_10) /len(agg_impact_10))
         EAP_TRIGGERED = "no"
         eap_status_bool=0
         Trigger_status=True
  
      
 
-        for key, values in dref_probabilities_10.items():
- 
+        for key, values in dref_probabilities_10.items(): 
             dref_trigger_status10 = {}
             thershold=values[1]
             if  (trigger_stat_dref10 > values[0]):
@@ -943,6 +958,8 @@ class Forecast:
  
             else:
                 trigger_stat_1=False
+                EAP_TRIGGERED = "no"
+    
             dref_trigger_status10['triggered_prob'] = thershold 
             dref_trigger_status10['EVENT'] = typhoon_names 
             dref_trigger_status10['trigger_stat'] = trigger_stat_1 
@@ -1003,26 +1020,26 @@ class Forecast:
             prov_name=provinces_names[provinces]
             df_trig=df_impact_forecast.query('Prov_Code==@provinces')
             if not df_trig.empty:  
-                probability_impact=df_trig.groupby(['storm_id']).agg(
+                probability_impact2=df_trig.groupby(['ens_id']).agg(
                     NUmber_of_affected_municipality=('Mun_Code','count'),
                     average_ML_Model=('Damage_predicted', 'mean'),
                     Total_affected_ML_Model=('number_affected_pop__prediction', sum),
                     Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
                 ######## calculate probability for impact                
                 
-                agg_impact = probability_impact["Total_affected_ML_Model"].values        
+                agg_impact_prov = probability_impact2["Total_affected_ML_Model"].values        
                 thershold='NAN'               
                 
 
                 for key, values in triggers.items():
                 
                     start_trigger_status1 = {}
-                    trigger_stat = 100*(sum(i > values[0] for i in agg_impact) /len(agg_impact)       )
+                    trigger_stat_prov = sum(i > values[0] for i in agg_impact_prov) /len(agg_impact_prov)     
                     #start_trigger_status1[key] = int(trigger_stat)
                     start_trigger_status1['thr_name']=key
-                    start_trigger_status1['thr_value']=int(trigger_stat)
+                    start_trigger_status1['thr_value']=trigger_stat_prov
 
-                    if  (values[1] < (sum(i > values[0] for i in agg_impact) /len(agg_impact))):
+                    if values[1] < trigger_stat_prov:
                         trigger_stat_=True
                         thershold=key 
                     else:
@@ -1060,7 +1077,7 @@ class Forecast:
         )
         df_impact_forecast_cerf = df_impact_forecast.query("reg in @cerf_regions")
 
-        probability_impact = df_impact_forecast_cerf.groupby("storm_id").agg(
+        probability_impact = df_impact_forecast_cerf.groupby("ens_id").agg(
             {"Damage_predicted_num": "sum"}
         )
         
@@ -1091,7 +1108,7 @@ class Forecast:
             
 
             hrs_track_df = self.hrs_track_data[typhoon_names].copy() 
-            hrs_track_df.columns[3]
+             
             logger.info(f"CHECK LAND FALL TIME FINAL STEP{hrs_track_df.columns[3]}")
             hrs_track_df["time"] = pd.to_datetime(hrs_track_df["YYYYMMDDHH"], format="%Y%m%d%H%M").dt.strftime("%Y-%m-%d %H:%M:%S")
         
@@ -1131,7 +1148,8 @@ class Forecast:
                 )
             logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfalltime_time_obj}")
 
-            landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
+            #landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
+            landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
             logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
             seconds = landfall_dellta.total_seconds()
             hours = int(seconds // 3600)
@@ -1305,7 +1323,7 @@ class Forecast:
                 exposure_place_codes = []
                 #### change the data frame here to include impact
                 for ix, row in df_total_upload.iterrows():
-                    if layer in ["prob_within_50km","houses_affected"]:
+                    if layer in ["houses_affected"]: #"prob_within_50km",
                         exposure_entry = {"placeCode": row["adm3_pcode"], "amount": round(0.01*row[layer],2)}
                     else:
                         exposure_entry = {"placeCode": row["adm3_pcode"], "amount": int(row[layer])}

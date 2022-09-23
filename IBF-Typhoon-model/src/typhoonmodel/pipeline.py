@@ -57,122 +57,110 @@ logger = logging.getLogger(__name__)
 
 def main():
     initialize.setup_cartopy()
-    start_time = datetime.now()
-    
-    dbm_ = DatabaseManager(countryCodeISO3='PHL',admin_level=3)
-    filename='data.zip'
-    path = 'typhoon/Gold/ibfdatapipeline/'+ filename
-    #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
-    DataFile = dbm_.getDataFromDatalake(path)
-    if DataFile.status_code >= 400:
-        raise ValueError()
-    open('./' + filename, 'wb').write(DataFile.content)
-    path_to_zip_file='./'+filename
-    with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
-        zip_ref.extractall('./data')
-        
-    logger.info('finished data download')
-    
+    start_time = datetime.now()   
     ############## Defult variables which will be updated if a typhoon is active 
-    print('---------------------AUTOMATION SCRIPT STARTED---------------------------------')
-    print(str(start_time))
-    
-    for countryCodeISO3 in countryCodes:
-        logger.info(f"running piepline for {countryCodeISO3}")  
-        admin_level=SETTINGS_SECRET[countryCodeISO3]["admin_level"]
-        mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
-        mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
-        mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
-        mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
-        
-        # Download data 
-        #dbm_ = DatabaseManager(countryCodeISO3,admin_level)
-        db = DatabaseManager(countryCodeISO3,admin_level)
-        
-        filename='data.zip'
-        path = 'typhoon/Gold/ibfdatapipeline/'+ filename
-        #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
-        DataFile = db.getDataFromDatalake(path)
-        if DataFile.status_code >= 400:
-            raise ValueError()
-        open('./' + filename, 'wb').write(DataFile.content)
-        path_to_zip_file='./'+filename
-        
-        with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
-            zip_ref.extractall('./data')
+    logger.info('AUTOMATION SCRIPT STARTED')
+    logger.info(f'simulation started at {start_time}')
+    try: 
+        for countryCodeISO3 in countryCodes:
+            logger.info(f"running piepline for {countryCodeISO3}")  
+            admin_level=SETTINGS_SECRET[countryCodeISO3]["admin_level"]
+            mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
+            mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
+            mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
+            mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
             
-        logger.info('finished data download')
+            # Download data 
+            #dbm_ = DatabaseManager(countryCodeISO3,admin_level)
+            db = DatabaseManager(countryCodeISO3,admin_level)
+            
+            filename='data.zip'
+            path = 'typhoon/Gold/ibfdatapipeline/'+ filename
+            #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
+            DataFile = db.getDataFromDatalake(path)
+            if DataFile.status_code >= 400:
+                raise ValueError()
+            open('./' + filename, 'wb').write(DataFile.content)
+            path_to_zip_file='./'+filename
+            
+            with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
+                zip_ref.extractall('./data')
+                
+            logger.info('finished data download')
 
-        ###############################################################
-        ####  check setting for mock data 
-        if mock:
-            #db = DatabaseManager(countryCodeISO3,admin_level)
-            if mock_trigger:
-                typhoon_names=mock_trigger_typhoon_event
+            ###############################################################
+            ####  check setting for mock data 
+            if mock:
+                if mock_trigger:
+                    typhoon_names=mock_trigger_typhoon_event
+                else:
+                    typhoon_names=mock_nontrigger_typhoon_event                
+                logger.info(f"mock piepline for typhoon{typhoon_names}")
+                
+                json_path = mock_data_path  + typhoon_names             
+                db.uploadTrackData(json_path)            
+                db.uploadTyphoonData(json_path)
+                db.sendNotificationTyphoon()
+
             else:
-                typhoon_names=mock_nontrigger_typhoon_event                
-            logger.info(f"mock piepline for typhoon{typhoon_names}")
-            
-            json_path = mock_data_path  + typhoon_names             
-            db.uploadTrackData(json_path)            
-            db.uploadTyphoonData(json_path)
-            db.sendNotificationTyphoon()
+                fc = Forecast(ecmwf_remote_directory,countryCodeISO3, admin_level)
 
-        else:
-            fc = Forecast(ecmwf_remote_directory,countryCodeISO3, admin_level)
+                if fc.Activetyphoon: #if it is not empty   
+                    for typhoon_names in fc.Activetyphoon:
+                        # upload data
+                        json_path = fc.Output_folder  + typhoon_names  
+                        EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
+                        EAP_TRIGGERED=fc.eap_status[typhoon_names]                   
+                        fc.db.uploadTrackData(json_path)            
+                        fc.db.uploadTyphoonData(json_path) 
+                        fc.db.sendNotificationTyphoon() 
+                        
 
-            if fc.Activetyphoon: #if it is not empty   
-                for typhoon_names in fc.Activetyphoon:
-                    # upload data
-                    json_path = fc.Output_folder  + typhoon_names  
-                    EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                    EAP_TRIGGERED=fc.eap_status[typhoon_names]                   
-                    fc.db.uploadTrackData(json_path)            
-                    fc.db.uploadTyphoonData(json_path) 
-                    fc.db.sendNotificationTyphoon() 
+                #if there is no active typhoon 
+                else: #
+                    logger.info('no active Typhoon')
+                    df_total_upload=fc.pcode  #data frame with pcodes 
+                    typhoon_names='null'
+                    df_total_upload['alert_threshold']=0
+                    df_total_upload['houses_affected']=0 
                     
-
-            #if there is no active typhoon 
-            else: #
-                logger.info('no active Typhoon')
-                df_total_upload=fc.pcode #data frame with pcodes 
-                typhoon_names='null'
-                df_total_upload['alert_threshold']=0
-                df_total_upload['houses_affected']=0 
-                
-                
-                
-                for layer in ["houses_affected","alert_threshold"]:
-                    exposure_entry=[]
-                    # prepare layer
-                    logger.info(f"preparing data for {layer}")
-                    #exposure_data = {'countryCodeISO3': countrycode}
-                    exposure_data = {"countryCodeISO3": "PHL"}
-                    exposure_place_codes = []
-                    #### change the data frame here to include impact
-                    for ix, row in df_total_upload.iterrows():
-                        exposure_entry = {"placeCode": row["adm3_pcode"],
-                                          "amount": row[layer]}
-                        exposure_place_codes.append(exposure_entry)
-                        
-                    exposure_data["exposurePlaceCodes"] = exposure_place_codes
-                    exposure_data["adminLevel"] = admin_level
-                    exposure_data["leadTime"] = "72-hour" #landfall_time_hr
-                    exposure_data["dynamicIndicator"] = layer
-                    exposure_data["disasterType"] = "typhoon"
-                    exposure_data["eventName"] = 'null'                     
-                    json_file_path = fc.Output_folder  + f'null_{layer}' + '.json'
                     
-                    with open(json_file_path, 'w') as fp:
-                        json.dump(exposure_data, fp)
+                    
+                    for layer in ["houses_affected","alert_threshold"]:
+                        exposure_entry=[]
+                        # prepare layer
+                        logger.info(f"preparing data for {layer}")
+                        #exposure_data = {'countryCodeISO3': countrycode}
+                        exposure_data = {"countryCodeISO3": "PHL"}
+                        exposure_place_codes = []
+                        #### change the data frame here to include impact
+                        for ix, row in df_total_upload.iterrows():
+                            exposure_entry = {"placeCode": row["adm3_pcode"],
+                                              "amount": row[layer]}
+                            exposure_place_codes.append(exposure_entry)
+                            
+                        exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                        exposure_data["adminLevel"] = admin_level
+                        exposure_data["leadTime"] = "72-hour" #landfall_time_hr
+                        exposure_data["dynamicIndicator"] = layer
+                        exposure_data["disasterType"] = "typhoon"
+                        exposure_data["eventName"] = 'null'                     
+                        json_file_path = fc.Output_folder  + f'null_{layer}' + '.json'
                         
-                #upload typhoon data        
-                json_path = fc.Output_folder
-                fc.db.uploadTyphoonData_no_event(json_path)                
-                        
-
-    print('---------------------AUTOMATION SCRIPT FINISHED---------------------------------')
-    print(str(datetime.now()))
+                        with open(json_file_path, 'w') as fp:
+                            json.dump(exposure_data, fp)
+                            
+                    #upload typhoon data        
+                    json_path = fc.Output_folder
+                    fc.db.uploadTyphoonData_no_event(json_path)                
+                            
+    except Exception as e:
+        logger.error("Typhoon Data PIPELINE ERROR")
+        logger.error(e)
+    elapsedTime = str(time.time() - start_time)
+    logger.info(str(elapsedTime))
+    
+ 
  
 if __name__ == "__main__":
     main()
