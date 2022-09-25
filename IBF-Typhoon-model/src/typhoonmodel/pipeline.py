@@ -60,7 +60,7 @@ def main():
     start_time = datetime.now()   
     ############## Defult variables which will be updated if a typhoon is active 
     logger.info('AUTOMATION SCRIPT STARTED')
-    logger.info(f'simulation started at {start_time}')
+    #logger.info(f'simulation started at {start_time}')
     try: 
         for countryCodeISO3 in countryCodes:
             logger.info(f"running piepline for {countryCodeISO3}")  
@@ -157,8 +157,8 @@ def main():
     except Exception as e:
         logger.error("Typhoon Data PIPELINE ERROR")
         logger.error(e)
-    elapsedTime = str(time.time() - start_time)
-    logger.info(str(elapsedTime))
+    #elapsedTime = str(time.time() - start_time)
+    logger.info('simulation finished')#str(elapsedTime))
     
  
  

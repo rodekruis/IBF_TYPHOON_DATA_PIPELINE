@@ -67,6 +67,7 @@ class Forecast:
         cent.check()
         #cent.plot()
         self.cent=cent
+        self.ECMWF_CORRECTION_FACTOR=ECMWF_CORRECTION_FACTOR
 
         admin = gpd.read_file(
             ADMIN_PATH
@@ -349,6 +350,7 @@ class Forecast:
         eval_set = [(X_train, y_train), (X_test, y_test)]
 
         reg.fit(X, y, eval_set=eval_set)
+        df_total['HAZ_v_max']=self.ECMWF_CORRECTION_FACTOR*df_total['HAZ_v_max']
         X_all = df_total[selected_features_xgb_regr]
         y_pred = reg.predict(X_all)
         y_pred[y_pred<0]=0
@@ -357,7 +359,7 @@ class Forecast:
         y_pred[y_pred>0]=1
         df_total['Trigger']=y_pred 
         
-        df_total.loc[df_total['HAZ_dis_track_min'] > 300, 'Damage_predicted'] = 0
+        df_total.loc[df_total['HAZ_dis_track_min'] > 150, 'Damage_predicted'] = 0
         
         df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
         probability_impact=df_total.groupby('Mun_Code').agg(
@@ -472,7 +474,7 @@ class Forecast:
         try:
             logger.info("High res member: creating intensity plot")
             fig, ax = plt.subplots(
-                figsize=(9, 13), subplot_kw=dict(projection=ccrs.PlateCarree())
+                figsize=(12, 8), subplot_kw=dict(projection=ccrs.PlateCarree())
             )
             track1.plot(axis=ax)
             output_filename = os.path.join(Output_folder, f"track_{typhoons}")
@@ -503,7 +505,7 @@ class Forecast:
             bounds1=(115.0,5.0,133.0,20.0)
             coast =coordinates.get_coastlines(bounds1, 10).geometry
             
-            coastline = gpd.clip(coast, PHL).to_crs('EPSG:3124')
+            coastline = gpd.clip(coast.to_crs('EPSG:3124'), PHL.to_crs('EPSG:3124'))#.to_crs('EPSG:3124')
             
             points_df = coord_lat.to_crs('EPSG:3124') 
             points_df['min_dist_to_coast'] = points_df.geometry.apply(self.min_distance, args=(coastline,))
@@ -538,7 +540,7 @@ class Forecast:
                     check_flag = check_flag + 1
 
             self.landfall_location[typhoons] = landfall_location_
-
+    
         else:
             len_ar = np.min([len(var.lat.values) for var in self.fcast_data])
             lat_ = np.ma.mean([var.lat.values[:len_ar] for var in self.fcast_data], axis=0)
@@ -580,7 +582,7 @@ class Forecast:
             MIN_DIST_TO_COAST = min(points_df['min_dist_to_coast'])
             data_forced = fcast_data_typ
 
-
+        
 
         # calculate wind field for each ensamble members
         if MIN_DIST_TO_COAST <200000:#in meters            
@@ -738,7 +740,7 @@ class Forecast:
         selected_columns = [
             "adm3_pcode",   
             "storm_id",
-            "ens_id"
+            "ens_id",
             "name",
             #"HAZ_max_06h_rain",
             #"HAZ_rainfall_max_24h",
@@ -816,7 +818,7 @@ class Forecast:
         impact = df_impact_forecast.copy()
         
         check_ensamble=False
-        impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max"]) 
+        impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max","prob_within_50km"]) 
         
         
         impact =impact.groupby("Mun_Code").agg(
@@ -933,6 +935,7 @@ class Forecast:
         
         probability_impact=df_impact_forecast.groupby('ens_id').agg(
                 NUmber_of_affected_municipality=('Mun_Code','count'),
+                Total_buildings_ML_Model=('Damage_predicted_num', sum),
                 Trigger_ML_Model=('Trigger', sum)).reset_index()
             
         ### DREF trigger based on 10% damage per manucipality  
@@ -941,7 +944,7 @@ class Forecast:
         probability_impact['Trigger']=probability_impact.apply(lambda x:1 if x.Trigger_ML_Model>2 else 0,axis=1)
         agg_impact_10 = probability_impact["Trigger"].values
         
-        trigger_stat_dref10 = 100(sum(agg_impact_10) /len(agg_impact_10))
+        trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
         EAP_TRIGGERED = "no"
         eap_status_bool=0
         Trigger_status=True
@@ -1148,8 +1151,8 @@ class Forecast:
                 )
             logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfalltime_time_obj}")
 
-            #landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
-            landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
+            landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
+            #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
             logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
             seconds = landfall_dellta.total_seconds()
             hours = int(seconds // 3600)
@@ -1157,7 +1160,7 @@ class Forecast:
             seconds = seconds % 60
             landfall_time_hr = str(hours) + "-hour"
         except:
-            landfall_time_hr='72-hour'
+            landfall_time_hr='0-hour'
             pass
         #############################################################
 

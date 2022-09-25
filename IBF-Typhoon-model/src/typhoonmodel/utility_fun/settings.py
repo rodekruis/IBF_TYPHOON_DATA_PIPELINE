@@ -78,20 +78,20 @@ SETTINGS_SECRET = {
 ###################
 
 start_time = datetime.now()
-#MAIN_DIRECTORY='/home/fbf/'
+MAIN_DIRECTORY='/home/fbf/'
 
-MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
+#MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory=None#'20220922000000'#None#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-High_resoluation_only_Switch=True
+ecmwf_remote_directory=None#'20220925000000'#None#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+High_resoluation_only_Switch=False
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
-
-Active_Typhoon_event_list=[]#'MA-ON']
+ECMWF_CORRECTION_FACTOR=1.5
+Active_Typhoon_event_list=['NORU']#'MA-ON']
 WIND_SPEED_THRESHOLD=20
 
 
