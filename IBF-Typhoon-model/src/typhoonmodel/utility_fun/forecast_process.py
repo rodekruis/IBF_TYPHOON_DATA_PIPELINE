@@ -351,6 +351,7 @@ class Forecast:
 
         reg.fit(X, y, eval_set=eval_set)
         df_total['HAZ_v_max']=self.ECMWF_CORRECTION_FACTOR*df_total['HAZ_v_max']
+        
         X_all = df_total[selected_features_xgb_regr]
         y_pred = reg.predict(X_all)
         y_pred[y_pred<0]=0
@@ -1066,7 +1067,7 @@ class Forecast:
         json_file_path = (
             self.Output_folder + typhoon_names + "_start_trigger_status" + ".csv"
         )
-        pd.DataFrame.from_dict(start_trigger_status, orient="index").query('trigger_stat==@Trigger_status').to_csv(
+        pd.DataFrame.from_dict(start_trigger_status, orient="index").to_csv(
             json_file_path
         )
     
@@ -1112,55 +1113,73 @@ class Forecast:
 
             hrs_track_df = self.hrs_track_data[typhoon_names].copy() 
              
-            logger.info(f"CHECK LAND FALL TIME FINAL STEP{hrs_track_df.columns[3]}")
+            logger.info("CHECK LAND FALL TIME FINAL STEP")
+            
             hrs_track_df["time"] = pd.to_datetime(hrs_track_df["YYYYMMDDHH"], format="%Y%m%d%H%M").dt.strftime("%Y-%m-%d %H:%M:%S")
         
             forecast_time = str(hrs_track_df['time'][0])
             forecast_time = datetime.strptime(forecast_time, "%Y-%m-%d %H:%M:%S")
-
-            ### filter areas in Philippiness area of responsibility
-
-            hrs_track_df = hrs_track_df#.query("5 < LAT < 20 and 115 < LON < 133")
+                        ### filter areas in Philippiness area of responsibility
+ 
             coord_lat = gpd.GeoDataFrame(
                 hrs_track_df.VMAX,
                 geometry=gpd.points_from_xy(hrs_track_df.LON, hrs_track_df.LAT),
             )
             coord_lat.set_crs(epsg=4326, inplace=True)
+            
             DIST_TO_COAST_M = coordinates.dist_to_coast(coord_lat, lon=None, signed=False)
 
             hrs_track_df["distance"] = DIST_TO_COAST_M
             
-            hrs_track_df.reset_index(inplace=True)
+            hrs_track_df.reset_index(inplace=True)  
             
+            point_inland=[]
+            for i in range (0,len(self.admin)):
+                tr_mask = coord_lat.within(self.admin.loc[i, 'geometry'])
+                tr_data = coord_lat.loc[tr_mask]
+                if not tr_data.empty:
+                    point_inland.append(list(pip_data.time.values))
+            point_inland_list = [item for sublist in point_inland for item in sublist]
             
+          
+            if point_inland_list:
+                landfalltime=min(point_inland_list)
+                landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y-%m-%d %H:%M:%S")
+                landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
+                #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
+                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
+                seconds = landfall_dellta.total_seconds()
+                hours = int(seconds // 3600)
+                landfall_time_hr = str(hours) + "-hour"
 
-            if (hrs_track_df["distance"].values < 0).any():
-                for row, data in hrs_track_df.iterrows():
-                    landfalltime = data["time"]
+            else:               
+                if (hrs_track_df["distance"].values < 0).any():
+                    for row, data in hrs_track_df.iterrows():
+                        landfalltime = data["time"]
+                        landfalltime_time_obj = datetime.strptime(
+                            str(landfalltime), "%Y-%m-%d %H:%M:%S"
+                        )
+                        if data["distance"] < 0:
+                            break
+                else:
+                    landfalltime = hrs_track_df.sort_values(by="distance", ascending=True).iloc[
+                        0
+                    ]["time"]
                     landfalltime_time_obj = datetime.strptime(
                         str(landfalltime), "%Y-%m-%d %H:%M:%S"
                     )
-                    if data["distance"] < 0:
-                        break
-            else:
-                landfalltime = hrs_track_df.sort_values(by="distance", ascending=True).iloc[
-                    0
-                ]["time"]
-                landfalltime_time_obj = datetime.strptime(
-                    str(landfalltime), "%Y-%m-%d %H:%M:%S"
-                )
-            logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfalltime_time_obj}")
+                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfalltime_time_obj}")
 
-            landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
-            #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
-            logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
-            seconds = landfall_dellta.total_seconds()
-            hours = int(seconds // 3600)
-            minutes = (seconds % 3600) // 60
-            seconds = seconds % 60
-            landfall_time_hr = str(hours) + "-hour"
+                landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
+                #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
+                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
+                seconds = landfall_dellta.total_seconds()
+                hours = int(seconds // 3600)
+                minutes = (seconds % 3600) // 60
+                seconds = seconds % 60
+                landfall_time_hr = str(hours) + "-hour"
         except:
-            landfall_time_hr='0-hour'
+            landfall_time_hr='5-hour'
             pass
         #############################################################
 
