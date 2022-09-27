@@ -90,7 +90,8 @@ ecmwf_remote_directory='20220925060000'#None#'20220923060000'#(start_time - time
 High_resoluation_only_Switch=False
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
-ECMWF_CORRECTION_FACTOR=1.5
+ECMWF_CORRECTION_FACTOR=1.6
+ECMWF_LATENCY_LEADTIME_CORRECTION=10 #
 Active_Typhoon_event_list=['NORU']#'MA-ON']
 WIND_SPEED_THRESHOLD=20
 
