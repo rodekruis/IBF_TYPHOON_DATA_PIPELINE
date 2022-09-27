@@ -726,7 +726,7 @@ class Forecast:
             right_on="adm3_pcode",
         ).filter(selected_columns)
         '''
-        lead_time_hr = list(set(wind_data.lead_time_hr.values))[0]
+        landfall_time_hr = list(set(wind_data.lead_time_hr.values))[0]
         df_hazard =wind_data.filter(selected_columns)
         
         df_total = pd.merge(
