@@ -1316,6 +1316,8 @@ class Forecast:
                 for ix, row in df_total_upload.iterrows():
                     if layer in ["houses_affected"]: #"prob_within_50km",
                         exposure_entry = {"placeCode": row["adm3_pcode"], "amount": round(0.01*row[layer],2)}
+                    elif layer in ["prob_within_50km"]: #"",
+                        exposure_entry = {"placeCode": row["adm3_pcode"], "amount": round(1*row[layer],2)}
                     else:
                         exposure_entry = {"placeCode": row["adm3_pcode"], "amount": int(row[layer])}
                     exposure_place_codes.append(exposure_entry)
