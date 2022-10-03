@@ -78,8 +78,11 @@ class Forecast:
         pcode = pd.read_csv(
             os.path.join(self.main_path, "data/pre_disaster_indicators/pcode.csv")
         )
+        
         Tphoon_EAP_Areas = pd.read_csv(
             os.path.join(self.main_path, "data/Tphoon_EAP_Areas.csv")
+            )
+        
         self.Tphoon_EAP_Areas = Tphoon_EAP_Areas
         self.pre_disaster_inds = self.pre_disaster_data()
         self.pcode = pcode
