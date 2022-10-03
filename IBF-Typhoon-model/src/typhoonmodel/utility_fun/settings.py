@@ -57,7 +57,7 @@ countryCodes=['PHL']
 # COUNTRY SETTINGS
 SETTINGS_SECRET = {
     "PHL": {
-        "IBF_API_URL":IBF_API_URL,#'https://ibf-demo.510.global/api/',
+        "IBF_API_URL":IBF_API_URL,#'https://ibf-test.510.global/api/',
         "ADMIN_LOGIN": ADMIN_LOGIN,
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
         "UCL_USERNAME": UCL_USERNAME,
@@ -86,20 +86,20 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory='20220925060000'#None#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory='20220925060000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 High_resoluation_only_Switch=False
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
-ECMWF_CORRECTION_FACTOR=1.6
+ECMWF_CORRECTION_FACTOR=1 
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 #
-Active_Typhoon_event_list=['NORU']#'MA-ON']
+Active_Typhoon_event_list=['NORU']#'NORU']
 WIND_SPEED_THRESHOLD=20
-
-
+Wind_damage_radius=150
+Show_Areas_on_IBF_radius=300
 
 Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
 data_point = start_time.strftime("%Y%m%d")      
-
+ 
 Input_folder = MAIN_DIRECTORY+ 'forecast/Input/'
 Output_folder = MAIN_DIRECTORY+ 'forecast/Output/'
 ECMWF_folder = MAIN_DIRECTORY+'forecast/Input/ECMWF/'

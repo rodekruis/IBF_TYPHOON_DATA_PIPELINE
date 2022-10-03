@@ -57,10 +57,12 @@ class Forecast:
         self.admin_level = admin_level
         self.remote_dir = remote_dir
         start_time = datetime.now()
+        self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
         self.ECMWF_MAX_TRIES = 3
         self.ECMWF_SLEEP = 30  # s
         self.main_path = MAIN_DIRECTORY
+        self.Show_Areas_on_IBF_radius=Show_Areas_on_IBF_radius
         ##Create grid points to calculate Winfield
         cent = Centroids()
         cent.set_raster_from_pnt_bounds((118, 6, 127, 19), res=0.05)
@@ -76,7 +78,9 @@ class Forecast:
         pcode = pd.read_csv(
             os.path.join(self.main_path, "data/pre_disaster_indicators/pcode.csv")
         )
-
+        Tphoon_EAP_Areas = pd.read_csv(
+            os.path.join(self.main_path, "data/Tphoon_EAP_Areas.csv")
+        self.Tphoon_EAP_Areas = Tphoon_EAP_Areas
         self.pre_disaster_inds = self.pre_disaster_data()
         self.pcode = pcode
         
@@ -227,18 +231,30 @@ class Forecast:
                 
                 ### run wind field function 
                 
-                self.windfieldData(typhoons) 
-                
-                #check if calculated wind fields are empty 
-               
-                wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")
-                if os.path.isfile(wind_file_path):
-                    calcuated_wind_fields=pd.read_csv(wind_file_path)                
-                    if not calcuated_wind_fields.empty:
-                        self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)
-                        self.Activetyphoon.append(typhoons)
-            # self.typhoon_wind_data = typhhon_wind_data
-            
+                is_land_fall=self.windfieldData(typhoons) 
+                if not is_land_fall:                
+                    #check if calculated wind fields are empty 
+                   
+                    wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")
+                    if os.path.isfile(wind_file_path):
+                        calcuated_wind_fields=pd.read_csv(wind_file_path)                
+                        if not calcuated_wind_fields.empty:
+                            self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)
+                            self.postDataToDatalake()
+                            self.Activetyphoon.append(typhoons)
+                # self.typhoon_wind_data = typhhon_wind_data
+                else:
+                    try:
+                        for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","tracks","rainfall"]:
+                            jsonpath=f'ibf/typhoon/Gold/forecast/{typhoons}/{layer}'+ '.json'  
+                            filename=self.Output_folder+f'{typhoons}_{layer}'+ '.json'                              
+                            DataFile = self.db.getDataFromDatalake(self, jsonpath)
+                            if DataFile.status_code >= 400:
+                                raise ValueError()
+                            open(filename, 'wb').write(DataFile.content)
+                    except:
+                        pass
+ 
               
 
     def min_distance(self,point, lines):
@@ -361,7 +377,7 @@ class Forecast:
         y_pred[y_pred>0]=1
         df_total['Trigger']=y_pred 
         
-        df_total.loc[df_total['HAZ_dis_track_min'] > 150, 'Damage_predicted'] = 0
+        df_total.loc[df_total['HAZ_dis_track_min'] > self.Wind_damage_radius, 'Damage_predicted'] = 0 # 
         
         df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
         probability_impact=df_total.groupby('Mun_Code').agg(
@@ -465,6 +481,7 @@ class Forecast:
             return Number_affected_pop
     
     def windfieldData(self, typhoons):
+        Made_land_fall=False
         tr_HRS = [
             tr
             for tr in self.fcast_data
@@ -587,55 +604,10 @@ class Forecast:
                 hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
                 if hours < 0:
                     hours=0
+                    Made_land_fall=True
                 landfall_time_hr = str(hours) + "-hour"
             else:
                 landfall_time_hr = "72-hour"            
-                
-                
-                
-            ''' 
-            else:
-                len_ar = np.min([len(var.lat.values) for var in self.fcast_data])
-                lat_ = np.ma.mean([var.lat.values[:len_ar] for var in self.fcast_data], axis=0)
-                lon_ = np.ma.mean([var.lon.values[:len_ar] for var in self.fcast_data], axis=0)
-                YYYYMMDDHH = pd.date_range(
-                    self.fcast_data[0].time.values[0], periods=len_ar, freq="H"
-                )
-                vmax_ = np.ma.mean(
-                    [var.max_sustained_wind.values[:len_ar] for var in self.fcast_data],
-                    axis=0,
-                )
-                d = {"YYYYMMDDHH": YYYYMMDDHH, "VMAX": vmax_, "LAT": lat_, "LON": lon_}
-                dfff = pd.DataFrame(d)
-                dfff["STORMNAME"] = typhoons
-                dfff["YYYYMMDDHH"] = dfff["YYYYMMDDHH"].apply(
-                    lambda x: x.strftime("%Y%m%d%H%M")
-                )
-                hrs_track_data = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
-                self.hrs_track_data[typhoons] = hrs_track_data
-                dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]].to_csv(
-                    os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),
-                    index=False,
-                )
-                
-                hrs_track_df=hrs_track_data#.query('5 < LAT < 20 and 115 < LON < 133')
-                hrs_track_df.reset_index(inplace=True)
-                coord_lat = gpd.GeoDataFrame(hrs_track_df.VMAX, geometry=gpd.points_from_xy(hrs_track_df.LON,hrs_track_df.LAT))
-                coord_lat.set_crs(epsg=4326, inplace=True)
-                
-                
-                world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-                PHL = world[world['name'] == "Philippines"].dissolve(by='name')
-                bounds1=(115.0,5.0,133.0,20.0)
-                coast =coordinates.get_coastlines(bounds1, 10).geometry
-                coastline = gpd.clip(coast, PHL).to_crs('EPSG:3124')
-                points_df = coord_lat.to_crs('EPSG:3124') 
-                points_df['min_dist_to_coast'] = points_df.geometry.apply(self.min_distance, args=(coastline,))
-
-                MIN_DIST_TO_COAST = min(points_df['min_dist_to_coast'])
-                data_forced = fcast_data_typ
-            '''
-        
 
             # calculate wind field for each ensamble members
             if data_forced and MIN_DIST_TO_COAST <200000:#in meters            
@@ -703,7 +675,7 @@ class Forecast:
                         index=False)
 
 
-
+        return Made_land_fall
     def impact_model(self, typhoon_names,wind_data):
         selected_columns = [
             "adm3_pcode",   
@@ -825,9 +797,7 @@ class Forecast:
             impact_HRS.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed"]),
             how="left", left_on="adm3_pcode", right_on="Mun_Code"
         )
-        impact_df["show_admin_area"] = impact_df["WEA_dist_track"].apply(
-            lambda x: 1 if x < 150 else 0
-        )
+        impact_df["show_admin_area"] = impact_df["WEA_dist_track"].apply(lambda x: 1 if x < self.Show_Areas_on_IBF_radius else 0)
         
         impact_df = impact_df.fillna(0)
         impact_df = impact_df.drop_duplicates("Mun_Code")
@@ -938,9 +908,10 @@ class Forecast:
             DREF_trigger_list_10[key] = dref_trigger_status10  
             
         self.eap_status[typhoon_names] = EAP_TRIGGERED
-        self.eap_status_bool[typhoon_names] = eap_status_bool
-        impact_df["alert_threshold"] = eap_status_bool 
+        self.eap_status_bool[typhoon_names] = eap_status_bool  
         
+        impact_df["alert_threshold"]=impact_df.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
+ 
         json_file_path = (
             self.Output_folder + typhoon_names + "_dref_trigger_status_10_percent" + ".csv"
         )
@@ -1335,3 +1306,36 @@ class Forecast:
         except:
             logger.info(f"no data for {layer}")
             pass
+
+    def postDataToDatalake(self):
+        import requests
+        import datetime
+        import hmac
+        import hashlib
+        import base64
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.filedatalake import DataLakeServiceClient
+        import os, uuid, sys
+
+        try:
+
+
+            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
+                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME), 
+                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY)
+
+            container_name='ibf/typhoon/Gold/forecast/'
+            file_system_client = service_client.get_file_system_client(file_system=container_name)
+            for jsonfile in os.listdir(self.Output_folder):  
+                directory_name= jsonfile.split('_')[0]   #self.
+                
+                dir_client = file_system_client.get_directory_client(directory_name)
+                dir_client.create_directory()
+                local_file = open(self.Output_folder + jsonfile,'r')
+                
+                file_contents = local_file.read()
+                file_client = dir_client.create_file(f"{jsonfile}")
+                file_client.upload_data(file_contents, overwrite=True)
+
+        except Exception as e:
+            print(e) 
