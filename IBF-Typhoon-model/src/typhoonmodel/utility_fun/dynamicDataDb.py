@@ -68,7 +68,7 @@ class DatabaseManager:
         return disasterType
         
     def uploadTyphoonData(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","alert_threshold","show_admin_area"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)
