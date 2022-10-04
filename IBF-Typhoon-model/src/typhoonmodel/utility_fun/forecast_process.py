@@ -1201,8 +1201,12 @@ class Forecast:
             typhoon_track["YYYYMMDDHH"], format="%Y%m%d%H%M"
         ).dt.strftime("%m-%d-%Y %H:%M:%S")
         
+        typhoon_track["HH"] = pd.to_datetime(
+            typhoon_track["YYYYMMDDHH"], format="%Y%m%d%H%M"
+        ).dt.strftime("%H:%M")
+        
         typhoon_track.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
-        wind_track = typhoon_track[["lon", "lat", "timestampOfTrackpoint"]]
+        wind_track = typhoon_track[["lon", "lat", "timestampOfTrackpoint","HH"]]
 
         ##############################################################################
         # rainfall
@@ -1261,12 +1265,14 @@ class Forecast:
         wind_track = wind_track.round(2)
 
         for ix, row in wind_track.iterrows():
-            exposure_entry = {
-                "lat": row["lat"],
-                "lon": row["lon"],
-                "timestampOfTrackpoint": row["timestampOfTrackpoint"],
-            }
-            exposure_place_codes.append(exposure_entry)
+            if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','18:00','21:00']:
+                
+                exposure_entry = {
+                    "lat": row["LAT"],
+                    "lon": row["LON"],
+                    "timestampOfTrackpoint": row["timestampOfTrackpoint"],
+                }
+                exposure_place_codes.append(exposure_entry)
 
         json_file_path = self.Output_folder + typhoon_names + "_tracks" + ".json"
 
