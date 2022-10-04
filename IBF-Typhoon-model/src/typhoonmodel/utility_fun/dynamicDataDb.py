@@ -68,7 +68,7 @@ class DatabaseManager:
         return disasterType
         
     def uploadTyphoonData(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","show_admin_area","alert_threshold"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)
@@ -77,13 +77,14 @@ class DatabaseManager:
             logger.info(f'Uploaded data for indicator: {indicator} ')
 
     def uploadTyphoonData_no_event(self,json_path):  
-        for indicator in ["houses_affected","alert_threshold"]:
+        for indicator in ["affected_population","alert_threshold"]:
             json_file_path =json_path +f'null_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)
                 #body['adminLevel'] = self.admin_level
                 self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
             logger.info(f'Uploaded data for indicator: {indicator} ')
+            
     def uploadCalculatedAffected(self):
         for adminlevels in SETTINGS[self.countryCodeISO3]['levels']:#range(1,self.admin_level+1):            
             for indicator, values in self.EXPOSURE_DATA_SOURCES.items():
@@ -294,6 +295,7 @@ class DatabaseManager:
         import base64
         from azure.identity import DefaultAzureCredential
         from azure.storage.filedatalake import DataLakeServiceClient
+
         import os, uuid, sys
 
         try:
@@ -326,8 +328,7 @@ class DatabaseManager:
         import hashlib
         import base64
         from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient
-        from azure.storage.filedatalake import DataLakeServiceClient
+        from azure.storage.filedatalake import DataLakeServiceClient        
         import shutil
         import os, uuid, sys
         DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM='510ibfsystem'

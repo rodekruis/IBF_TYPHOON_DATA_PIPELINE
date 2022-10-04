@@ -767,12 +767,22 @@ class Forecast:
         impact = df_impact_forecast.copy()
         
         check_ensamble=False
-        impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code","HAZ_dis_track_min","Damage_predicted_num","HAZ_v_max","prob_within_50km"]) 
+        impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code",
+                                                                          "HAZ_dis_track_min","number_affected_pop__prediction",
+                                                                          "Damage_predicted_num","HAZ_v_max",
+                                                                          "prob_within_50km"]
+                                                                         ) 
         
         
         impact =impact.groupby("Mun_Code").agg(
-            {"Damage_predicted": "mean","VUL_Housing_Units":"mean","HAZ_dis_track_min": "min","HAZ_v_max":"max","prob_within_50km":"mean"}
+            {"Damage_predicted": "mean",
+             "VUL_Housing_Units":"mean",
+             "number_affected_pop__prediction":"mean",
+             "HAZ_dis_track_min": "min",
+             "HAZ_v_max":"max",
+             "prob_within_50km":"mean"}
         )
+        impact["number_affected_pop__prediction"] = impact["number_affected_pop__prediction"].astype("int") 
         
         impact['Damage_predicted_num'] = impact.apply(lambda x: 0.01*x['Damage_predicted']*x['VUL_Housing_Units'], axis=1)
         impact["Damage_predicted_num"] = impact["Damage_predicted_num"].astype("int")
@@ -794,6 +804,7 @@ class Forecast:
                 "Damage_predicted": "houses_affected",
                 "HAZ_dis_track_min": "WEA_dist_track",
                 "HAZ_v_max": "windspeed",
+                "number_affected_pop__prediction":"affected_population",
             },
             inplace=True,
         )
@@ -802,7 +813,7 @@ class Forecast:
        
         impact_df = pd.merge(
             self.pcode,
-            impact_HRS.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed"]),
+            impact_HRS.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed","affected_population"]),
             how="left", left_on="adm3_pcode", right_on="Mun_Code"
         )
         impact_df["show_admin_area"] = impact_df["WEA_dist_track"].apply(lambda x: 1 if x < self.Show_Areas_on_IBF_radius else 0)
@@ -928,7 +939,7 @@ class Forecast:
         )
         
         #save to file 
-        csv_file2 = self.Output_folder + "Average_Impact_" + typhoon_names + ".csv"        
+        csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"        
         impact_df.to_csv(csv_file2)
       
         
@@ -1179,9 +1190,10 @@ class Forecast:
         
         # "","adm3_en","glat","adm3_pcode","adm2_pcode","adm1_pcode","glon","GEN_mun_code","probability_dist50","impact","WEA_dist_track"
         
-        csv_file2 = self.Output_folder + "Average_Impact_" + typhoon_names + ".csv"
+        csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"
  
-        Model_output_data=pd.read_csv(csv_file2).filter(["adm3_pcode","prob_within_50km","houses_affected", "alert_threshold","show_admin_area"])
+        Model_output_data=pd.read_csv(csv_file2).filter(["adm3_pcode","prob_within_50km","houses_affected",
+                                                         "alert_threshold","show_admin_area","affected_population"])
      
         df_total_upload = pd.merge(
             df_hazard2,
@@ -1268,8 +1280,8 @@ class Forecast:
             if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','18:00','21:00']:
                 
                 exposure_entry = {
-                    "lat": row["LAT"],
-                    "lon": row["LON"],
+                    "lat": row["lat"],
+                    "lon": row["lon"],
                     "timestampOfTrackpoint": row["timestampOfTrackpoint"],
                 }
                 exposure_place_codes.append(exposure_entry)
@@ -1291,7 +1303,7 @@ class Forecast:
         #df_total_upload = df_total_upload.astype({"prob_within_50km": "int32","houses_affected": "int32","alert_threshold": "int32","show_admin_area": "int32"})
       
         try:
-            for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area"]:
+            for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","affected_population"]:
                 # prepare layer
                 logger.info(f"preparing data for {layer}")
                 # exposure_data = {'countryCodeISO3': countrycode}

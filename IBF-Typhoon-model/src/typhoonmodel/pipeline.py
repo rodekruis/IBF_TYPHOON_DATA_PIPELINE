@@ -126,7 +126,7 @@ def main():
                     
                     
                     
-                    for layer in ["houses_affected","alert_threshold"]:
+                    for layer in ["affected_population","alert_threshold"]:
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")
