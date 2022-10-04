@@ -100,8 +100,8 @@ ECMWF_CORRECTION_FACTOR=1
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 #
 Active_Typhoon_event_list=['NORU']#'NORU']
 WIND_SPEED_THRESHOLD=20
-Wind_damage_radius=150
-Show_Areas_on_IBF_radius=300
+Wind_damage_radius=150 #will be updated based on maximum_radius varaible from model 
+Show_Areas_on_IBF_radius=400
 
 Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
 data_point = start_time.strftime("%Y%m%d")      

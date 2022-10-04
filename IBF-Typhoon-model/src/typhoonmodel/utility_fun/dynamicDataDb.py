@@ -288,7 +288,7 @@ class DatabaseManager:
         return r
 
 
-    def postDataToDatalake(self):
+    def postDataToDatalake(self,datalakefolder):
         import requests
         import datetime
         import hmac
@@ -308,13 +308,12 @@ class DatabaseManager:
 
             container_name='ibf/typhoon/Gold/forecast/'
             file_system_client = service_client.get_file_system_client(file_system=container_name)
-            for jsonfile in os.listdir(self.Output_folder):  
-                directory_name= jsonfile.split('_')[0]   #self.
-                
-                dir_client = file_system_client.get_directory_client(directory_name)
-                dir_client.create_directory()
-                local_file = open(self.Output_folder + jsonfile,'r')
-                
+            directory_name= datalakefolder  #self.
+            dir_client = file_system_client.get_directory_client(directory_name)
+            dir_client.create_directory()
+            
+            for jsonfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.json')]:
+                local_file = open(self.Output_folder + jsonfile,'r')                
                 file_contents = local_file.read()
                 file_client = dir_client.create_file(f"{jsonfile}")
                 file_client.upload_data(file_contents, overwrite=True)
@@ -332,6 +331,7 @@ class DatabaseManager:
         from azure.storage.filedatalake import DataLakeServiceClient        
         import shutil
         import os, uuid, sys
+        import time
         DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM='510ibfsystem'
 
         try:
@@ -346,7 +346,10 @@ class DatabaseManager:
             dir_client = file_system_client.get_directory_client(directory_name)
             dir_client.create_directory()
             
-            shutil.make_archive(filename, 'zip', self.Output_folder)
+
+            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip', lambda name : 'csv' in name)
+            
+            time.sleep(10) # Sleep for 10 seconds
              
     
             for ibfresultfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.zip')]:  
@@ -359,3 +362,14 @@ class DatabaseManager:
 
         except Exception as e:
             print(e) 
+            
+    def zipFilesInDir(self,dirName, zipFileName, filter):
+        from zipfile import ZipFile
+        import os
+        from os.path import basename       
+        with ZipFile(zipFileName, 'w') as zipObj: # create a ZipFile object            
+            for filename in os.listdir(dirName): # Iterate over all the files in directory
+                if filter(filename):
+                    filePath = os.path.join(dirName, filename)
+                    # Add file to zip
+                    zipObj.write(filePath, basename(filePath))

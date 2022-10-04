@@ -233,6 +233,10 @@ class Forecast:
                 #
                 logger.info(f"Processing data {typhoons}")
                 
+                HRS = [ tr  for tr in fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
+                
+                self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
+                
                 ### run wind field function 
                 
                 is_land_fall=self.windfieldData(typhoons) 
@@ -246,7 +250,10 @@ class Forecast:
                         calcuated_wind_fields=pd.read_csv(wind_file_path)                
                         if not calcuated_wind_fields.empty:
                             self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)
-                            self.db.postDataToDatalake()
+                            
+                            forecast_directory=fcast_data[0].forecast_time.strftime("%Y%m%d%H%M")
+                            
+                            self.db.postDataToDatalake(datalakefolder=forecast_directory)
                             self.Activetyphoon.append(typhoons)
                 # self.typhoon_wind_data = typhhon_wind_data
                 else:
