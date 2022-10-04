@@ -1059,87 +1059,7 @@ class Forecast:
             json_file_path
         )
         
-        
-        
-        
-        '''
-        ###################
-        logger.info("CHECK LAND FALL TIME")
-        try:
-            # landfall_location=self.landfall_location[typhoon_names]
-            
 
-            hrs_track_df = self.hrs_track_data[typhoon_names].copy() 
-             
-            logger.info("CHECK LAND FALL TIME FINAL STEP")
-            
-            hrs_track_df["time"] = pd.to_datetime(hrs_track_df["YYYYMMDDHH"], format="%Y%m%d%H%M").dt.strftime("%Y-%m-%d %H:%M:%S")
-        
-            forecast_time = str(hrs_track_df['time'][0])
-            forecast_time = datetime.strptime(forecast_time, "%Y-%m-%d %H:%M:%S")
-                        ### filter areas in Philippiness area of responsibility
- 
-            coord_lat = gpd.GeoDataFrame(
-                hrs_track_df.VMAX,
-                geometry=gpd.points_from_xy(hrs_track_df.LON, hrs_track_df.LAT),
-            )
-            coord_lat.set_crs(epsg=4326, inplace=True)
-            
-            DIST_TO_COAST_M = coordinates.dist_to_coast(coord_lat, lon=None, signed=False)
-
-            hrs_track_df["distance"] = DIST_TO_COAST_M
-            
-            hrs_track_df.reset_index(inplace=True)  
-            
-            point_inland=[]
-            for i in range (0,len(self.admin)):
-                tr_mask = coord_lat.within(self.admin.loc[i, 'geometry'])
-                tr_data = coord_lat.loc[tr_mask]
-                if not tr_data.empty:
-                    point_inland.append(list(pip_data.time.values))
-            point_inland_list = [item for sublist in point_inland for item in sublist]
-            
-          
-            if point_inland_list:
-                landfalltime=min(point_inland_list)
-                landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y-%m-%d %H:%M:%S")
-                landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
-                #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
-                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
-                seconds = landfall_dellta.total_seconds()
-                hours = int(seconds // 3600)
-                landfall_time_hr = str(hours) + "-hour"
-
-            else:               
-                if (hrs_track_df["distance"].values < 0).any():
-                    for row, data in hrs_track_df.iterrows():
-                        landfalltime = data["time"]
-                        landfalltime_time_obj = datetime.strptime(
-                            str(landfalltime), "%Y-%m-%d %H:%M:%S"
-                        )
-                        if data["distance"] < 0:
-                            break
-                else:
-                    landfalltime = hrs_track_df.sort_values(by="distance", ascending=True).iloc[
-                        0
-                    ]["time"]
-                    landfalltime_time_obj = datetime.strptime(
-                        str(landfalltime), "%Y-%m-%d %H:%M:%S"
-                    )
-                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfalltime_time_obj}")
-
-                landfall_dellta = landfalltime_time_obj - forecast_time-10  # .strftime("%Y%m%d")
-                #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
-                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
-                seconds = landfall_dellta.total_seconds()
-                hours = int(seconds // 3600)
-                minutes = (seconds % 3600) // 60
-                seconds = seconds % 60
-                landfall_time_hr = str(hours) + "-hour"
-        except:
-            landfall_time_hr='1-hour'
-            pass
-        '''
         #############################################################
 
         # adm3_pcode,storm_id,is_ensamble,value_count,v_max,name,dis_track_min
@@ -1218,7 +1138,7 @@ class Forecast:
         ).dt.strftime("%H:%M")
         
         typhoon_track.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
-        wind_track = typhoon_track[["lon", "lat", "timestampOfTrackpoint","HH"]]
+        wind_track = typhoon_track[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]
 
         ##############################################################################
         # rainfall
@@ -1275,13 +1195,34 @@ class Forecast:
         exposure_place_codes = []
         wind_track.dropna(inplace=True)
         wind_track = wind_track.round(2)
+ 
+        wind_track['KPH']=wind_track.apply(lambda x:3.6*x.VMAX,axis=1)
 
+        
+
+        
+        
+        
+        '''
+        TROPICAL DEPRESSION (TD) - a tropical cyclone with maximum sustained winds of up to 62 kilometers per hour (kph) or less than 34 nautical miles per hour (knots) .
+        TROPICAL STORM (TS) - a tropical cyclone with maximum wind speed of 62 to 88 kph or 34 - 47 knots.
+        SEVERE TROPICAL STORM (STS) , a tropical cyclone with maximum wind speed of 87 to 117 kph or 48 - 63 knots.
+        TYPHOON (TY) - a tropical cyclone with maximum wind speed of 118 to 184 kph or 64 - 99 knots.
+        SUPER TYPHOON (STY) - a tropical cyclone with maximum wind speed exceeding 185 kph or more than 100 knots.
+        '''
+        bins = [0,62,88, 117, 185, np.inf]
+        catagories = ['TD', 'TS', 'STS', 'TY', 'STY']
+
+        wind_track['catagories'] = pd.cut(wind_track['KPH'], bins, labels=catagories)
+        
         for ix, row in wind_track.iterrows():
-            if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','18:00','21:00']:
+            if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']:
                 
                 exposure_entry = {
                     "lat": row["lat"],
                     "lon": row["lon"],
+                    "windspeed":row["KPH"],
+                    "catagory":row["catagories"],
                     "timestampOfTrackpoint": row["timestampOfTrackpoint"],
                 }
                 exposure_place_codes.append(exposure_entry)

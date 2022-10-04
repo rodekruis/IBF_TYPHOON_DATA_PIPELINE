@@ -25,6 +25,7 @@ class DatabaseManager:
         self.ADMIN_LOGIN=SETTINGS_SECRET[countryCodeISO3]["ADMIN_LOGIN"]
         self.API_SERVICE_URL = SETTINGS_SECRET[countryCodeISO3]['IBF_API_URL'] 
         self.admin_level = admin_level
+        self.Output_folder = Output_folder
         
         self.mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
         self.mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
