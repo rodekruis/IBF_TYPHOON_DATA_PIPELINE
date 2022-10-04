@@ -13,6 +13,7 @@ try:
     
     AZURE_STORAGE_ACCOUNT=secret_client.get_secret("AZURE-STORAGE-ACCOUNT").value
     AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value
+
     
     ADMIN_LOGIN = secret_client.get_secret("IBF-TEST-LOGIN").value
     PHP_PASSWORD=secret_client.get_secret("IBF-TEST-PASSWORD").value
@@ -20,6 +21,7 @@ try:
     UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
     DATALAKE_STORAGE_ACCOUNT_NAME = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-NAME").value
     DATALAKE_STORAGE_ACCOUNT_KEY = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY").value
+    DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM=secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY-IBFSYSTEM").value
     DATALAKE_API_VERSION = '2018-11-09'
  
 
@@ -36,11 +38,14 @@ try:
     #PHP_PASSWORD=os.environ['IBF_PASSWORD']
     DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE_STORAGE_ACCOUNT_NAME']        
     DATALAKE_STORAGE_ACCOUNT_KEY_ = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
+    
     #DATALAKE_STORAGE_ACCOUNT_KEY_ =os.environ.get("DATALAKE-STORAGE-ACCOUNT-KEY")
     print('Environment variables found.')
     DATALAKE_STORAGE_ACCOUNT_KEY=f'{DATALAKE_STORAGE_ACCOUNT_KEY_}=='
-    
     DATALAKE_API_VERSION = '2018-11-09'
+    #DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY2"]
+    
+    
 except Exception as e:
     print('No environment variables found.')
 
@@ -86,8 +91,9 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory='20220925060000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory='20220924180000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 High_resoluation_only_Switch=False
+
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
 ECMWF_CORRECTION_FACTOR=1 
@@ -106,6 +112,7 @@ ECMWF_folder = MAIN_DIRECTORY+'forecast/Input/ECMWF/'
 rainfall_path = MAIN_DIRECTORY+'forecast/Input/rainfall/'
 mock_data_path = MAIN_DIRECTORY+'data/mock/'
 ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
+
 if not os.path.exists(Input_folder):
     os.makedirs(Input_folder)
 if not os.path.exists(Output_folder):

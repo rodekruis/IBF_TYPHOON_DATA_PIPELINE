@@ -113,6 +113,7 @@ def main():
                         fc.db.uploadTrackData(json_path)            
                         fc.db.uploadTyphoonData(json_path) 
                         fc.db.sendNotificationTyphoon() 
+                        fc.db.postResulToDatalake() 
                         
 
                 #if there is no active typhoon 

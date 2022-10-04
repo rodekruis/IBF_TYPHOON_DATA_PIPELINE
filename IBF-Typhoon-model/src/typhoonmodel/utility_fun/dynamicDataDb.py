@@ -284,3 +284,75 @@ class DatabaseManager:
                '.dfs.core.windows.net/'+file_system_name)
         r = requests.get(url, headers=headers)
         return r
+
+
+    def postDataToDatalake(self):
+        import requests
+        import datetime
+        import hmac
+        import hashlib
+        import base64
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.filedatalake import DataLakeServiceClient
+        import os, uuid, sys
+
+        try:
+
+
+            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
+                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME), 
+                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY)
+
+            container_name='ibf/typhoon/Gold/forecast/'
+            file_system_client = service_client.get_file_system_client(file_system=container_name)
+            for jsonfile in os.listdir(self.Output_folder):  
+                directory_name= jsonfile.split('_')[0]   #self.
+                
+                dir_client = file_system_client.get_directory_client(directory_name)
+                dir_client.create_directory()
+                local_file = open(self.Output_folder + jsonfile,'r')
+                
+                file_contents = local_file.read()
+                file_client = dir_client.create_file(f"{jsonfile}")
+                file_client.upload_data(file_contents, overwrite=True)
+
+        except Exception as e:
+            print(e) 
+            
+    def postResulToDatalake(self):
+        import requests
+        import datetime
+        import hmac
+        import hashlib
+        import base64
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.filedatalake import DataLakeServiceClient
+        import shutil
+        import os, uuid, sys
+        DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM='510ibfsystem'
+
+        try:
+            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
+                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM), 
+                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM)
+
+            container_name='ibftyphoonforecast/'
+            file_system_client = service_client.get_file_system_client(file_system=container_name)
+            directory_name= 'ibf_model_results' 
+            filename=self.Output_folder + 'model_outputs'
+            dir_client = file_system_client.get_directory_client(directory_name)
+            dir_client.create_directory()
+            
+            shutil.make_archive(filename, 'zip', self.Output_folder)
+             
+    
+            for ibfresultfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.zip')]:  
+ 
+                local_file = open(self.Output_folder + ibfresultfile,'rb')
+                
+                file_contents = local_file.read()
+                file_client = dir_client.create_file(f"{ibfresultfile}")
+                file_client.upload_data(file_contents, overwrite=True)
+
+        except Exception as e:
+            print(e) 

@@ -56,7 +56,7 @@ class Forecast:
         self.TyphoonName = typhoon_event_name
         self.admin_level = admin_level
         self.remote_dir = remote_dir
-        start_time = datetime.now()
+ 
         self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
         self.ECMWF_MAX_TRIES = 3
@@ -180,7 +180,7 @@ class Forecast:
 
         self.fcast_data = fcast_data
         self.ecmwf = FcastData
-        fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
+        #fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
         self.data_filenames_list = {}
         self.image_filenames_list = {}
         self.typhoon_wind_data = {}
@@ -223,6 +223,7 @@ class Forecast:
                 rainfall_error = True
 
             self.rainfall_error = rainfall_error
+            
             if  Active_Typhoon_event_list:
                 Active_Typhoon_events=Active_Typhoon_event_list
             else:
@@ -235,18 +236,21 @@ class Forecast:
                 ### run wind field function 
                 
                 is_land_fall=self.windfieldData(typhoons) 
+                
                 if not is_land_fall:                
                     #check if calculated wind fields are empty 
+                    logger.info(f'is there a landfall event {is_land_fall}')
                    
                     wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")
                     if os.path.isfile(wind_file_path):
                         calcuated_wind_fields=pd.read_csv(wind_file_path)                
                         if not calcuated_wind_fields.empty:
                             self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)
-                            self.postDataToDatalake()
+                            self.db.postDataToDatalake()
                             self.Activetyphoon.append(typhoons)
                 # self.typhoon_wind_data = typhhon_wind_data
                 else:
+                    self.Activetyphoon.append(typhoons)
                     try:
                         for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","tracks","rainfall"]:
                             jsonpath=f'ibf/typhoon/Gold/forecast/{typhoons}/{layer}'+ '.json'  
@@ -255,6 +259,7 @@ class Forecast:
                             if DataFile.status_code >= 400:
                                 raise ValueError()
                             open(filename, 'wb').write(DataFile.content)
+                            logger.info(f'get previous model run result from datalake for layer {layer}')
                     except:
                         pass
  
@@ -1309,36 +1314,4 @@ class Forecast:
         except:
             logger.info(f"no data for {layer}")
             pass
-
-    def postDataToDatalake(self):
-        import requests
-        import datetime
-        import hmac
-        import hashlib
-        import base64
-        from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient
-        import os, uuid, sys
-
-        try:
-
-
-            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
-                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME), 
-                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY)
-
-            container_name='ibf/typhoon/Gold/forecast/'
-            file_system_client = service_client.get_file_system_client(file_system=container_name)
-            for jsonfile in os.listdir(self.Output_folder):  
-                directory_name= jsonfile.split('_')[0]   #self.
-                
-                dir_client = file_system_client.get_directory_client(directory_name)
-                dir_client.create_directory()
-                local_file = open(self.Output_folder + jsonfile,'r')
-                
-                file_contents = local_file.read()
-                file_client = dir_client.create_file(f"{jsonfile}")
-                file_client.upload_data(file_contents, overwrite=True)
-
-        except Exception as e:
-            print(e) 
+        
