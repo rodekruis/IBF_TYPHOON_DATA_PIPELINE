@@ -122,7 +122,7 @@ def main():
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
                     df_total_upload['alert_threshold']=0
-                    df_total_upload['houses_affected']=0 
+                    df_total_upload['affected_population']=0 
                     
                     
                     

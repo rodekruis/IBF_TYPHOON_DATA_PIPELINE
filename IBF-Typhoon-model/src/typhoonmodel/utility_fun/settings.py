@@ -91,14 +91,14 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory='20220924180000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory=None#'20220925120000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 High_resoluation_only_Switch=False
 
 #ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
 typhoon_event_name=None
 ECMWF_CORRECTION_FACTOR=1 
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 #
-Active_Typhoon_event_list=['NORU']#'NORU']
+Active_Typhoon_event_list=[]#'NORU']
 WIND_SPEED_THRESHOLD=20
 Wind_damage_radius=150 #will be updated based on maximum_radius varaible from model 
 Show_Areas_on_IBF_radius=400
