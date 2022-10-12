@@ -86,6 +86,8 @@ def main():
                 zip_ref.extractall('./data')
                 
             logger.info('finished data download')
+            
+    
 
             ###############################################################
             ####  check setting for mock data 
@@ -103,29 +105,36 @@ def main():
 
             else:
                 fc = Forecast(ecmwf_remote_directory,countryCodeISO3, admin_level)
-
                 if fc.Activetyphoon: #if it is not empty   
                     for typhoon_names in fc.Activetyphoon:
-                        # upload data
-                        json_path = fc.Output_folder  + typhoon_names  
-                        EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                        EAP_TRIGGERED=fc.eap_status[typhoon_names]                   
-                        fc.db.uploadTrackData(json_path)            
-                        fc.db.uploadTyphoonData(json_path) 
-                        fc.db.sendNotificationTyphoon() 
-                        fc.db.postResulToDatalake() 
-                        
+                        if fc.Activetyphoon_landfall[typhoon_names]=='notmadelandfall':
+                            # upload data
+                            json_path = fc.Output_folder  + typhoon_names  
+                            EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
+                            EAP_TRIGGERED=fc.eap_status[typhoon_names]                   
+                            fc.db.uploadTrackData(json_path)            
+                            fc.db.uploadTyphoonData(json_path) 
+                            fc.db.sendNotificationTyphoon() 
+                            fc.db.postResulToDatalake()
+                            forecast_directory=typhoon_names + fc.forecast_time
+                            fc.db.postDataToDatalake(datalakefolder=forecast_directory)
+                            fc.db.postDataToDatalake(datalakefolder=typhoon_names)
+                        else:
+                            logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')
+                            fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
+                            logger.info(f'getting previous model run result from datalake  complete')
+                            fc.db.uploadTrackData(json_path) 
+                            fc.db.uploadTyphoonData(json_path) 
+                            
+                            
 
-                #if there is no active typhoon 
+                    #if there is no active typhoon 
                 else: #
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
                     df_total_upload['alert_threshold']=0
-                    df_total_upload['affected_population']=0 
-                    
-                    
-                    
+                    df_total_upload['affected_population']=0                     
                     for layer in ["affected_population","alert_threshold"]:
                         exposure_entry=[]
                         # prepare layer
@@ -152,8 +161,8 @@ def main():
                             
                     #upload typhoon data        
                     json_path = fc.Output_folder
-                    fc.db.uploadTyphoonData_no_event(json_path)                
-                            
+                    fc.db.uploadTyphoonData_no_event(json_path)   
+           
     except Exception as e:
         logger.error("Typhoon Data PIPELINE ERROR")
         logger.error(e)

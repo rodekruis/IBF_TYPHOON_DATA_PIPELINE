@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import shutil
 ##################
 ## LOAD SECRETS ##
 ##################
@@ -87,20 +88,21 @@ MAIN_DIRECTORY='/home/fbf/'
 
 #MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
-ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3_simpl2.geojson'
+ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory=None#'20220925120000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20221012060000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory=None
 High_resoluation_only_Switch=False
 
-#ecmwf_remote_directory=None#(start_time - timedelta(hours=10)).strftime("%Y%m%d000000")#None#'20220714120000'
+
 typhoon_event_name=None
 ECMWF_CORRECTION_FACTOR=1 
-ECMWF_LATENCY_LEADTIME_CORRECTION=10 #
-Active_Typhoon_event_list=[]#'NORU']
+ECMWF_LATENCY_LEADTIME_CORRECTION=10 
+Active_Typhoon_event_list=[]
 WIND_SPEED_THRESHOLD=20
-Wind_damage_radius=150 #will be updated based on maximum_radius varaible from model 
+Wind_damage_radius=300 #will be updated based on maximum_radius varaible from model 
 Show_Areas_on_IBF_radius=400
 
 Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
@@ -113,15 +115,21 @@ rainfall_path = MAIN_DIRECTORY+'forecast/Input/rainfall/'
 mock_data_path = MAIN_DIRECTORY+'data/mock/'
 ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
 
-if not os.path.exists(Input_folder):
-    os.makedirs(Input_folder)
-if not os.path.exists(Output_folder):
-    os.makedirs(Output_folder)
-if not os.path.exists(ECMWF_folder):
-    os.makedirs(ECMWF_folder)
-if not os.path.exists(rainfall_path):
-    os.makedirs(rainfall_path)  
 
+for dir_path in [Input_folder,Output_folder,rainfall_path]:
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+        os.makedirs(dir_path)
+    else:
+        os.makedirs(dir_path)
+
+
+
+
+
+
+    
+    
 Population_Growth_factor=1.15 #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
 
 Housing_unit_correction={'year':['2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022'],

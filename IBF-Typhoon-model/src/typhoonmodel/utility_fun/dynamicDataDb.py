@@ -117,7 +117,18 @@ class DatabaseManager:
             track_records = json.load(json_file)
         disasterType = self.getDisasterType()
         body=track_records
-        self.apiPostRequest('typhoon-track/', body=body)
+        body2={}
+        body2['countryCodeISO3']=body['countryCodeISO3']
+        body2['leadTime']=body['leadTime']
+        body2['eventName']=body['eventName']
+        exposure=[]
+        for value in body['trackpointDetails']:
+            value['windspeed']=int(value['windspeed'])
+            exposure.append(value)
+                
+        body2['trackpointDetails']=exposure
+    
+        self.apiPostRequest('typhoon-track/', body=body2)
         logger.info(f'Uploaded track_data: {json_file_path}')
                     
 
@@ -287,6 +298,55 @@ class DatabaseManager:
         r = requests.get(url, headers=headers)
         return r
 
+
+
+    def getDataFromDatalake2(self, datalakefolder):
+        import requests
+        import datetime
+        import hmac
+        import hashlib
+        import base64
+        from azure.storage.filedatalake import DataLakeServiceClient
+
+        request_time = datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+  
+        logger.info(f'Downloading previous model run data for {datalakefolder} from datalake')
+
+                
+        service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
+                                                                                                DATALAKE_STORAGE_ACCOUNT_NAME), 
+                                            credential=DATALAKE_STORAGE_ACCOUNT_KEY)
+
+        container_name='ibf/typhoon/Gold/forecast/'
+        
+        file_system_client = service_client.get_file_system_client(file_system=container_name)
+        directory_name= datalakefolder 
+          
+        directory_client = file_system_client.get_directory_client(directory_name)
+        
+        
+        
+        for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","affected_population","tracks","rainfall"]:
+
+            logger.info(f'downlading layer {layer}') 
+            
+            #DataFile = self.db.getDataFromDatalake(self, jsonpath)
+            remote_file= f'{datalakefolder}_{layer}.json' 
+            
+            local_file_path=os.path.join(self.Output_folder,remote_file)
+
+            local_file = open(local_file_path,'wb')
+
+            file_client = directory_client.get_file_client(remote_file)
+
+            download = file_client.download_file()
+
+            downloaded_bytes = download.readall()
+
+            local_file.write(downloaded_bytes)
+
+            local_file.close()
+ 
 
     def postDataToDatalake(self,datalakefolder):
         import requests
