@@ -179,7 +179,7 @@ class Forecast:
         ]
 
         self.fcast_data = fcast_data
-        self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
+        #self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
         self.ecmwf = FcastData
         #fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
         self.data_filenames_list = {}
@@ -195,10 +195,8 @@ class Forecast:
         self.rainfall_path = rainfall_path
         self.Output_folder = Output_folder
 
-        self.threshold = (
-            WIND_SPEED_THRESHOLD  # (threshold to filter dataframe /reduce data )
-        )
-
+        self.WIND_SPEED_THRESHOLD =  WIND_SPEED_THRESHOLD  #
+        
         if TropicalCycloneAdvisoryDomain_events != []:
             # download NOAA rainfall
             try:
@@ -242,6 +240,7 @@ class Forecast:
                 HRS = [ tr  for tr in fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
                 
                 self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
+                self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
                 
                 
                 ### run wind field function 
@@ -249,13 +248,19 @@ class Forecast:
                 is_land_fall=self.windfieldData(typhoons) 
                 logger.info('finished wind field calculation')
           
-                if  not bool(is_land_fall):                
+                if  is_land_fall ==0:#not bool(is_land_fall):                
                     #check if calculated wind fields are empty 
                     logger.info(f'{typhoons}event didnt made landfall yet')
                     self.Activetyphoon_landfall[typhoons]='notmadelandfall'       
-                else:
+                elif is_land_fall ==1:
                     logger.info(f'there isa lready a landfall event {typhoons}')
-                    self.Activetyphoon_landfall[typhoons]='madelandfall'  
+                    self.Activetyphoon_landfall[typhoons]='madelandfall' 
+                elif is_land_fall ==2:
+                    self.Activetyphoon_landfall[typhoons]='Farfromland'
+                    json_path = self.Output_folder  + typhoons  
+                    self.db.uploadTyphoonDataNoLandfall(json_path)
+                    
+                
                               
                 wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")  
                               
@@ -558,10 +563,32 @@ class Forecast:
              
             self.hrs_track_data[typhoons] = hrs_track_data
             
-            dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]].to_csv(
-                os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),
-                index=False,
-            )
+            #dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]].to_csv(
+            #    os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),
+            #    index=False)
+            
+            typhoon_tracks=dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
+            typhoon_tracks["timestampOfTrackpoint"] = pd.to_datetime(
+                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
+            ).dt.strftime("%m-%d-%Y %H:%M:%S")
+            
+            typhoon_tracks["HH"] = pd.to_datetime(
+                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
+            ).dt.strftime("%H:%M")
+            time_steps=['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']
+            typhoon_tracks=typhoon_tracks.query('HH in @time_steps')
+            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),index=False) 
+            
+            typhoon_tracks.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
+            
+            wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]
+            wind_tracks_hrs.dropna(inplace=True)
+            
+            wind_tracks_hrs = wind_tracks_hrs.round(2)
+            
+
+                        
+        
 
             # Adjust track time step
             data_forced = [
@@ -656,7 +683,38 @@ class Forecast:
             hrs_track_df["distance"] = DIST_TO_COAST_M
             
             #hrs_track_df.reset_index(inplace=True)  
-            logger.info(f'finished calculating distance to land{MIN_DIST_TO_COAST}')        
+            logger.info(f'finished calculating distance to land{MIN_DIST_TO_COAST}')     
+            if not wind_tracks_hrs.empty:    
+                wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
+                bins = [0,62,88, 117, 185, np.inf]
+                catagories = ['TD', 'TS', 'STS', 'TY', 'STY']
+
+                wind_tracks_hrs['catagories'] = pd.cut(wind_tracks_hrs['KPH'], bins, labels=catagories)
+                exposure_place_codes=[]
+                
+                for ix, row in wind_tracks_hrs.iterrows():
+                    if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']:                        
+                        exposure_entry = {
+                            "lat": row["lat"],
+                            "lon": row["lon"],
+                            "windspeed":int(row["KPH"]),
+                            "category":row["catagories"],
+                            "timestampOfTrackpoint": row["timestampOfTrackpoint"],
+                        }
+                        exposure_place_codes.append(exposure_entry)
+
+                json_file_path = self.Output_folder + typhoons + "_tracks" + ".json"
+                
+                track_records = {
+                    "countryCodeISO3": "PHL",
+                    "leadTime": landfall_time_hr,
+                    "eventName": typhoons,
+                    "trackpointDetails": exposure_place_codes,
+                }
+
+                with open(json_file_path, "w") as fp:
+                    json.dump(track_records, fp)
+                       
 
             # calculate wind field for each ensamble members
             if data_forced:# and MIN_DIST_TO_COAST <200000:#in meters            
@@ -666,7 +724,7 @@ class Forecast:
                 TYphoon = TropCyclone()
                 TYphoon.set_from_tracks(tracks, self.cent, store_windfields=True,metric="geosphere")            
                 windfield=TYphoon.windfields
-                threshold = 20
+                threshold =self.WIND_SPEED_THRESHOLD# 20
                 list_intensity = []
                 distan_track = []
                 logger.info(f'finished calculating distance to land{MIN_DIST_TO_COAST}')  
@@ -683,7 +741,7 @@ class Forecast:
                             'centroid_id': centroid_id,
                             'value': intensity,
                             'timestamp': timesteps,})
-                    inten_tr = inten_tr[inten_tr.value > threshold]
+                    inten_tr = inten_tr[inten_tr.value > self.WIND_SPEED_THRESHOLD]
                     inten_tr['storm_id'] = tr.sid
                     inten_tr['name'] = tr.name
                     inten_tr = (pd.merge(inten_tr,  self.df_admin, how='outer', on='centroid_id')
@@ -723,9 +781,75 @@ class Forecast:
                     typhhon_wind_data = typhhon_df
                     typhhon_df['lead_time_hr']=landfall_time_hr
                     #Activetyphoon.append(typhoons)
+                    
                     typhhon_df.to_csv(
                         os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),
                         index=False)
+                    
+                            # windspeed
+                    layer='windspeed'
+                    df_wind=typhhon_df
+                    df_wind.fillna(0, inplace=True)
+                    df_wind['windspeed']=df_wind['HAZ_v_max']
+                    
+                    df_wind.astype({"windspeed": "int32"})
+
+                    exposure_data = {"countryCodeISO3": "PHL"}
+                    exposure_place_codes = []
+                    #### change the data frame here to include impact
+                    for ix, row in df_wind.iterrows():
+                        exposure_entry = {"placeCode": row["adm3_pcode"], "amount": int(row[layer])}
+                        exposure_place_codes.append(exposure_entry)
+
+                    exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                    exposure_data["adminLevel"] = self.admin_level
+                    exposure_data["leadTime"] = landfall_time_hr
+                    exposure_data["dynamicIndicator"] = layer
+                    exposure_data["disasterType"] = "typhoon"
+                    exposure_data["eventName"] = typhoons
+
+                    json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
+
+                    with open(json_file_path, "w") as fp:
+                        json.dump(exposure_data, fp)       
+            
+                else:
+                    Made_land_fall=2
+                    
+                    df_total_upload=self.pcode.copy()  #data frame with pcodes  
+                    df_total_upload['alert_threshold']=0
+                    df_total_upload['affected_population']=0   
+                    df_total_upload['windspeed']=0  
+                    df_total_upload['houses_affected']=0
+                    df_total_upload['show_admin_area']=1
+
+                                    
+                    for layer in ["windspeed","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+                        exposure_entry=[]
+                        # prepare layer
+                        logger.info(f"preparing data for {layer}")
+                        #exposure_data = {'countryCodeISO3': countrycode}
+                        exposure_data = {"countryCodeISO3": "PHL"}
+                        exposure_place_codes = []
+                        #### change the data frame here to include impact
+                        for ix, row in df_total_upload.iterrows():
+                            exposure_entry = {"placeCode": row["adm3_pcode"],
+                                            "amount": row[layer]}
+                            exposure_place_codes.append(exposure_entry)
+                            
+                        exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                        exposure_data["adminLevel"] = self.admin_level
+                        exposure_data["leadTime"] = "72-hour" #landfall_time_hr
+                        exposure_data["dynamicIndicator"] = layer
+                        exposure_data["disasterType"] = "typhoon"
+                        exposure_data["eventName"] = typhoons                     
+                        json_file_path = self.Output_folder  + f'{typhoons}_{layer}' + '.json'
+                        
+                        with open(json_file_path, 'w') as fp:
+                            json.dump(exposure_data, fp)
+                    
+
+            
         logger.info(f'finshed wind calculation') 
         return Made_land_fall
     

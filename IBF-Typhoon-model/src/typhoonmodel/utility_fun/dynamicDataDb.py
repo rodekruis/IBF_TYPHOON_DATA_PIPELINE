@@ -76,7 +76,15 @@ class DatabaseManager:
                 #body['adminLevel'] = self.admin_level
                 self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
             logger.info(f'Uploaded data for indicator: {indicator} ')
-
+            
+    def uploadTyphoonDataNoLandfall(self,json_path):  
+        for indicator in ["windspeed","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+            json_file_path =json_path +f'_{indicator}' + '.json'
+            with open(json_file_path) as json_file:
+                body = json.load(json_file)
+                #body['adminLevel'] = self.admin_level
+                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+            logger.info(f'Uploaded data for indicator: {indicator} ')
     def uploadTyphoonData_no_event(self,json_path):  
         for indicator in ["affected_population","alert_threshold"]:
             json_file_path =json_path +f'null_{indicator}' + '.json'

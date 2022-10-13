@@ -119,12 +119,14 @@ def main():
                             forecast_directory=typhoon_names + fc.forecast_time
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
-                        else:
+                        elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
                             logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')
                             fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
                             logger.info(f'getting previous model run result from datalake  complete')
                             fc.db.uploadTrackData(json_path) 
                             fc.db.uploadTyphoonData(json_path) 
+                        else:
+                            logger.info(f'typhoon{typhoon_names} is far from land')
                             
                             
 

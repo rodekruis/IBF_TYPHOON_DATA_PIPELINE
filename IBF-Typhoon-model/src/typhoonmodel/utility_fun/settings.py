@@ -84,6 +84,7 @@ SETTINGS_SECRET = {
 ###################
 
 start_time = datetime.now()
+
 MAIN_DIRECTORY='/home/fbf/'
 
 #MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
@@ -92,16 +93,16 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-#ecmwf_remote_directory='20221012060000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-ecmwf_remote_directory=None
+ecmwf_remote_directory='20221013120000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory=None
 High_resoluation_only_Switch=False
 
 
 typhoon_event_name=None
 ECMWF_CORRECTION_FACTOR=1 
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 
-Active_Typhoon_event_list=[]
-WIND_SPEED_THRESHOLD=20
+Active_Typhoon_event_list=['70W']
+WIND_SPEED_THRESHOLD=0
 Wind_damage_radius=300 #will be updated based on maximum_radius varaible from model 
 Show_Areas_on_IBF_radius=400
 
