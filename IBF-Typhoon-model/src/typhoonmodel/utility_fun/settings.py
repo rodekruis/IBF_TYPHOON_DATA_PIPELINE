@@ -14,12 +14,19 @@ try:
     
     AZURE_STORAGE_ACCOUNT=secret_client.get_secret("AZURE-STORAGE-ACCOUNT").value
     AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value
+    
+ 
+
 
     
     ADMIN_LOGIN = secret_client.get_secret("IBF-TEST-LOGIN").value
-    PHP_PASSWORD=secret_client.get_secret("IBF-TEST-PASSWORD").value
+    ADMIN_PASSWORD=secret_client.get_secret("IBF-TEST-PASSWORD").value
+    IBF_API_URL=secret_client.get_secret("IBF-TEST-API-URL").value
+    
+   
     UCL_USERNAME=secret_client.get_secret("UCL-USERNAME").value
     UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
+    
     DATALAKE_STORAGE_ACCOUNT_NAME = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-NAME").value
     DATALAKE_STORAGE_ACCOUNT_KEY = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY").value
     DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM=secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY-IBFSYSTEM").value
