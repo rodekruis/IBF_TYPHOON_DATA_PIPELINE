@@ -125,12 +125,46 @@ def main():
                             logger.info(f'getting previous model run result from datalake  complete')
                             fc.db.uploadTrackData(json_path) 
                             fc.db.uploadTyphoonData(json_path) 
+                        elif len(fc.Activetyphoon_landfall) == 0:
+                            logger.info('no active Typhoon')
+                            df_total_upload=fc.pcode.copy()  #data frame with pcodes 
+                            typhoon_names='null'
+                            df_total_upload['alert_threshold']=0
+                            df_total_upload['affected_population']=0                     
+                            for layer in ["affected_population","alert_threshold"]:
+                                exposure_entry=[]
+                                # prepare layer
+                                logger.info(f"preparing data for {layer}")
+                                #exposure_data = {'countryCodeISO3': countrycode}
+                                exposure_data = {"countryCodeISO3": "PHL"}
+                                exposure_place_codes = []
+                                #### change the data frame here to include impact
+                                for ix, row in df_total_upload.iterrows():
+                                    exposure_entry = {"placeCode": row["adm3_pcode"],
+                                                    "amount": row[layer]}
+                                    exposure_place_codes.append(exposure_entry)
+                                    
+                                exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                                exposure_data["adminLevel"] = admin_level
+                                exposure_data["leadTime"] = "72-hour" #landfall_time_hr
+                                exposure_data["dynamicIndicator"] = layer
+                                exposure_data["disasterType"] = "typhoon"
+                                exposure_data["eventName"] = None                     
+                                json_file_path = fc.Output_folder  + f'null_{layer}' + '.json'
+                                
+                                with open(json_file_path, 'w') as fp:
+                                    json.dump(exposure_data, fp)
+                                    
+                            #upload typhoon data        
+                            json_path = fc.Output_folder
+                            fc.db.uploadTyphoonData_no_event(json_path)                     
                         else:
                             logger.info(f'typhoon{typhoon_names} is far from land')
                             
                             
 
                     #if there is no active typhoon 
+                '''
                 else: #
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
@@ -164,6 +198,7 @@ def main():
                     #upload typhoon data        
                     json_path = fc.Output_folder
                     fc.db.uploadTyphoonData_no_event(json_path)   
+                    '''
            
     except Exception as e:
         logger.error("Typhoon Data PIPELINE ERROR")
