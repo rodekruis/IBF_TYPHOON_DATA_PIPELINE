@@ -236,10 +236,10 @@ class Forecast:
                 
  
 
- 
+
                 HRS = [ tr  for tr in fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
-                
-                self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
+                if len(HRS) >0:                    
+                    self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
                 self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
                 
                 
@@ -259,7 +259,7 @@ class Forecast:
                     self.Activetyphoon_landfall[typhoons]='Farfromland'
                     json_path = self.Output_folder  + typhoons  
                     self.db.uploadTyphoonDataNoLandfall(json_path)
-                    self.db.uploadTrackData(json_path)
+                    self.db.uploadTyphoonDataNoLandfall(json_path)
                     
                 
                               

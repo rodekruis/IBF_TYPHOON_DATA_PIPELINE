@@ -70,7 +70,7 @@ countryCodes=['PHL']
 # COUNTRY SETTINGS
 SETTINGS_SECRET = {
     "PHL": {
-        "IBF_API_URL":'https://ibf-demo.510.global/api/',#IBF_API_URL,#
+        "IBF_API_URL":IBF_API_URL,#'https://ibf-test.510.global/api/',
         "ADMIN_LOGIN": ADMIN_LOGIN,
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
         "UCL_USERNAME": UCL_USERNAME,
@@ -100,11 +100,11 @@ ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-ecmwf_remote_directory='20220924060000'#'20221014000000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-Active_Typhoon_event_list=['NORU']#['71W']
+#ecmwf_remote_directory='20220925120000'#'20221014000000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#Active_Typhoon_event_list=['NORU']
 
-#ecmwf_remote_directory=None
-#Active_Typhoon_event_list=[]
+ecmwf_remote_directory=None
+Active_Typhoon_event_list=[]
 High_resoluation_only_Switch=False
 
 

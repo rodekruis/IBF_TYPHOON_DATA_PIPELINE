@@ -111,7 +111,8 @@ def main():
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  
                             EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                            EAP_TRIGGERED=fc.eap_status[typhoon_names]                   
+                            EAP_TRIGGERED=fc.eap_status[typhoon_names]     
+                                          
                             fc.db.uploadTrackData(json_path)            
                             fc.db.uploadTyphoonData(json_path) 
                             fc.db.sendNotificationTyphoon() 
@@ -119,14 +120,22 @@ def main():
                             forecast_directory=typhoon_names + fc.forecast_time
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
+                            
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
                             logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')
+                            
+                                
                             fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
                             logger.info(f'getting previous model run result from datalake  complete')
-                            fc.db.uploadTrackData(json_path) 
-                            fc.db.uploadTyphoonData(json_path) 
+                            json_path = fc.Output_folder  + typhoon_names
+                          
+                            fc.db.uploadTrackDataAfterlandfall(json_path) 
+                            
+                            fc.db.uploadTyphoonDataAfterlandfall(json_path) 
+                         
                         elif len(fc.Activetyphoon_landfall) == 0:
                             logger.info('no active Typhoon')
+                   
                             df_total_upload=fc.pcode.copy()  #data frame with pcodes 
                             typhoon_names='null'
                             df_total_upload['alert_threshold']=0
@@ -157,10 +166,11 @@ def main():
                                     
                             #upload typhoon data        
                             json_path = fc.Output_folder
-                            fc.db.uploadTyphoonData_no_event(json_path)                     
+                            fc.db.uploadTyphoonData_no_event(json_path)         
+              
                         else:
                             logger.info(f'typhoon{typhoon_names} is far from land')
-                            
+                        
                             
 
                     #if there is no active typhoon 
