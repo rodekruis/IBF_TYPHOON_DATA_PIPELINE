@@ -259,6 +259,7 @@ class Forecast:
                     self.Activetyphoon_landfall[typhoons]='Farfromland'
                     json_path = self.Output_folder  + typhoons  
                     self.db.uploadTyphoonDataNoLandfall(json_path)
+                    self.db.uploadTrackData(json_path)
                     
                 
                               
@@ -819,12 +820,15 @@ class Forecast:
                     df_total_upload=self.pcode.copy()  #data frame with pcodes  
                     df_total_upload['alert_threshold']=0
                     df_total_upload['affected_population']=0   
-                    df_total_upload['windspeed']=0  
-                    df_total_upload['houses_affected']=0
+                    df_total_upload['windspeed']=None 
+                    df_total_upload['houses_affected']=None
                     df_total_upload['show_admin_area']=1
+                    df_total_upload['prob_within_50km']=None
+                    df_total_upload['rainfall']=None
+                     
 
-                                    
-                    for layer in ["windspeed","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+                                  
+                    for layer in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")
@@ -843,7 +847,7 @@ class Forecast:
                         exposure_data["dynamicIndicator"] = layer
                         exposure_data["disasterType"] = "typhoon"
                         exposure_data["eventName"] = typhoons                     
-                        json_file_path = self.Output_folder  + f'{typhoons}_{layer}' + '.json'
+                        json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
                         
                         with open(json_file_path, 'w') as fp:
                             json.dump(exposure_data, fp)
