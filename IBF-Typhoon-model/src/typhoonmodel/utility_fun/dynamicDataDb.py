@@ -136,18 +136,23 @@ class DatabaseManager:
             track_records = json.load(json_file)
         disasterType = self.getDisasterType()
         body=track_records
+        
+        '''
         body2={}
         body2['countryCodeISO3']=body['countryCodeISO3']
         body2['leadTime']=body['leadTime']
         body2['eventName']=body['eventName']
+        
         exposure=[]
         for value in body['trackpointDetails']:
             value['windspeed']=int(value['windspeed'])
             exposure.append(value)
                 
         body2['trackpointDetails']=exposure
+        
+        '''
     
-        self.apiPostRequest('typhoon-track/', body=body2)
+        self.apiPostRequest('typhoon-track/', body=body)
         logger.info(f'Uploaded track_data: {json_file_path}')
                     
     def uploadTrackDataAfterlandfall(self,json_path):

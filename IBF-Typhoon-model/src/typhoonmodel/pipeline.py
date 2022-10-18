@@ -127,11 +127,16 @@ def main():
                                 
                             fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
                             logger.info(f'getting previous model run result from datalake  complete')
-                            json_path = fc.Output_folder  + typhoon_names
-                          
-                            fc.db.uploadTrackDataAfterlandfall(json_path) 
                             
+                            json_path = fc.Output_folder  + typhoon_names                          
+                            fc.db.uploadTrackDataAfterlandfall(json_path)                             
                             fc.db.uploadTyphoonDataAfterlandfall(json_path) 
+                            
+                        elif fc.Activetyphoon_landfall[typhoon_names]=='Farfromland':   
+                            logger.info(f'uploadng data for event far from land ')
+                            json_path = fc.Output_folder  + typhoon_names  
+                            fc.db.uploadTrackData(json_path)
+                            fc.db.uploadTyphoonDataNoLandfall(json_path)
                          
                         elif len(fc.Activetyphoon_landfall) == 0:
                             logger.info('no active Typhoon')

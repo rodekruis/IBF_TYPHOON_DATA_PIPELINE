@@ -167,20 +167,20 @@ class Forecast:
         
         #FcastData = [tr for tr in FcastData if (tr.is_ensemble == "False")] limit running in azure logic
         if High_resoluation_only_Switch:
-            Data_to_process = [tr for tr in FcastData if (tr.is_ensemble == "False")]
+            Data_to_process = [tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events and tr.is_ensemble == "False")]
         else:
-            Data_to_process =FcastData        
+            Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]         
         
 
         fcast_data = [
             track_data_clean.track_data_clean(tr)
             for tr in Data_to_process
-            if (tr.time.size > 1 and tr.name in TropicalCycloneAdvisoryDomain_events)
+            if (tr.time.size > 1)
         ]
 
         self.fcast_data = fcast_data
         #self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
-        self.ecmwf = FcastData
+        #self.ecmwf = FcastData
         #fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
         self.data_filenames_list = {}
         self.image_filenames_list = {}
@@ -238,6 +238,7 @@ class Forecast:
 
 
                 HRS = [ tr  for tr in fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
+                
                 if len(HRS) >0:                    
                     self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
                 self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
@@ -248,18 +249,21 @@ class Forecast:
                 is_land_fall=self.windfieldData(typhoons) 
                 logger.info('finished wind field calculation')
           
-                if  is_land_fall ==0:#not bool(is_land_fall):                
+                if  is_land_fall ==1:#not bool(is_land_fall):                
                     #check if calculated wind fields are empty 
                     logger.info(f'{typhoons}event didnt made landfall yet')
-                    self.Activetyphoon_landfall[typhoons]='notmadelandfall'       
-                elif is_land_fall ==1:
+                    self.Activetyphoon_landfall[typhoons]='notmadelandfall'  
+                         
+                elif is_land_fall ==2:
                     logger.info(f'there isa lready a landfall event {typhoons}')
                     self.Activetyphoon_landfall[typhoons]='madelandfall' 
-                elif is_land_fall ==2:
+                    
+                elif is_land_fall ==0:
+                    logger.info(f'there is an active event {typhoons} but far from land ')
                     self.Activetyphoon_landfall[typhoons]='Farfromland'
-                    json_path = self.Output_folder  + typhoons  
-                    self.db.uploadTyphoonDataNoLandfall(json_path)
-                    self.db.uploadTyphoonDataNoLandfall(json_path)
+                    #json_path = self.Output_folder  + typhoons  
+                    #self.db.uploadTyphoonDataNoLandfall(json_path)
+                    #self.db.uploadTyphoonDataNoLandfall(json_path)
                     
                 
                               
@@ -507,7 +511,7 @@ class Forecast:
             return Number_affected_pop
     
     def windfieldData(self, typhoons):
-        Made_land_fall=0
+        Made_land_fall=-1
         tr_HRS = [
             tr
             for tr in self.fcast_data
@@ -529,9 +533,11 @@ class Forecast:
             logger.info(f"incomplete track data ")
 
         if tr_HRS != []:
+            Made_land_fall=+1
             HRS_SPEED = (
                 tr_HRS[0].max_sustained_wind.values / 0.88
             ).tolist()  ############# 0.84 is conversion factor for ECMWF 10MIN TO 1MIN AVERAGE
+            
             dfff = tr_HRS[0].to_dataframe()
             dfff[["VMAX", "LAT", "LON"]] = dfff[["max_sustained_wind", "lat", "lon"]]
             dfff["YYYYMMDDHH"] = dfff.index.values
@@ -539,6 +545,8 @@ class Forecast:
                 lambda x: x.strftime("%Y%m%d%H%M")
             )
             dfff["STORMNAME"] = typhoons
+            dfff["VMAX"] = dfff["VMAX"]/ 0.88
+            
             hrs_track_data = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
             
             hrs_track_df=hrs_track_data.copy()#.query('5 < LAT < 20 and 115 < LON < 133')
@@ -655,6 +663,8 @@ class Forecast:
             logger.info(f'land points {point_inland_list}')
           
             if len(point_inland_list)>0:
+                #Made_land_fall=2
+                Made_land_fall=+1
                 landfalltime=min(point_inland_list)
                 landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y-%m-%d %H:%M:%S")
                 landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
@@ -664,7 +674,8 @@ class Forecast:
                 hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
                 if hours < 0:
                     hours=0
-                    Made_land_fall=1
+                    #Made_land_fall=1
+                    Made_land_fall=+1
                 landfall_time_hr = str(hours) + "-hour"
             else:
                 landfall_time_hr = "72-hour"     
@@ -813,18 +824,18 @@ class Forecast:
 
                     with open(json_file_path, "w") as fp:
                         json.dump(exposure_data, fp)       
-            
-                else:
-                    Made_land_fall=2
+               
+                elif Made_land_fall==0 and len(typhhon_df.index < 1):
+                    #Made_land_fall=2
                     
                     df_total_upload=self.pcode.copy()  #data frame with pcodes  
                     df_total_upload['alert_threshold']=0
                     df_total_upload['affected_population']=0   
-                    df_total_upload['windspeed']=None 
-                    df_total_upload['houses_affected']=None
+                    df_total_upload['windspeed']=0 
+                    df_total_upload['houses_affected']=0
                     df_total_upload['show_admin_area']=1
-                    df_total_upload['prob_within_50km']=None
-                    df_total_upload['rainfall']=None
+                    df_total_upload['prob_within_50km']=0
+                    df_total_upload['rainfall']=0
                      
 
                                   
@@ -851,7 +862,7 @@ class Forecast:
                         
                         with open(json_file_path, 'w') as fp:
                             json.dump(exposure_data, fp)
-                    
+                  
 
             
         logger.info(f'finshed wind calculation') 
