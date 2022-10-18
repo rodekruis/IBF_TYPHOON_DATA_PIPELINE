@@ -48,7 +48,7 @@ HAZ_TYPE = 'TC'
 INLAND_MAX_DIST_KM = 1000
 """Maximum inland distance of the centroids in km"""
 
-CENTR_NODE_MAX_DIST_KM = 300
+CENTR_NODE_MAX_DIST_KM = 600
 """Maximum distance between centroid and TC track node in km"""
 
 CENTR_NODE_MAX_DIST_DEG = 5.5

@@ -9,23 +9,20 @@ import shutil
 try:
     from azure.identity import DefaultAzureCredential
     from azure.keyvault.secrets import SecretClient
+    
     az_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
     secret_client = SecretClient(vault_url='https://ibf-flood-keys.vault.azure.net', credential=az_credential)
     
     AZURE_STORAGE_ACCOUNT=secret_client.get_secret("AZURE-STORAGE-ACCOUNT").value
-    AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value
-    
- 
-
-
-    
+    AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value   
+     
     ADMIN_LOGIN = secret_client.get_secret("IBF-TEST-LOGIN").value
     ADMIN_PASSWORD=secret_client.get_secret("IBF-TEST-PASSWORD").value
     IBF_API_URL=secret_client.get_secret("IBF-TEST-API-URL").value
     
    
-    UCL_USERNAME=secret_client.get_secret("UCL-USERNAME").value
-    UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
+   # UCL_USERNAME=secret_client.get_secret("UCL-USERNAME").value
+   # UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
     
     DATALAKE_STORAGE_ACCOUNT_NAME = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-NAME").value
     DATALAKE_STORAGE_ACCOUNT_KEY = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY").value
@@ -73,8 +70,8 @@ SETTINGS_SECRET = {
         "IBF_API_URL":IBF_API_URL,#'https://ibf-test.510.global/api/',
         "ADMIN_LOGIN": ADMIN_LOGIN,
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
-        "UCL_USERNAME": UCL_USERNAME,
-        "UCL_PASSWORD": UCL_PASSWORD,
+        #"UCL_USERNAME": UCL_USERNAME,
+        #"UCL_PASSWORD": UCL_PASSWORD,
         "AZURE_STORAGE_ACCOUNT": AZURE_STORAGE_ACCOUNT,
         "AZURE_CONNECTING_STRING": AZURE_CONNECTING_STRING,
         "admin_level": 3,
