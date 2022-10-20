@@ -137,10 +137,10 @@ def main():
                             json_path = fc.Output_folder  + typhoon_names  
                             fc.db.uploadTrackData(json_path)
                             fc.db.uploadTyphoonDataNoLandfall(json_path)
-                         
-                        elif len(fc.Activetyphoon_landfall) == 0:
-                            logger.info('no active Typhoon')
-                   
+                            
+                        #elif len(fc.Activetyphoon_landfall) == 0:
+                        elif fc.Activetyphoon_landfall[typhoon_names]=='noEvent':
+                            logger.info(f'uploadng data for no active Typhoon ') 
                             df_total_upload=fc.pcode.copy()  #data frame with pcodes 
                             typhoon_names='null'
                             df_total_upload['alert_threshold']=0

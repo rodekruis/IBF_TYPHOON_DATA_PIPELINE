@@ -45,7 +45,8 @@ from climada.hazard.tc_tracks import (
 from climada.util.files_handler import get_file_names
 
 # declare constants
-ECMWF_FTP = 'dissemination.ecmwf.int'
+#ECMWF_FTP = 'dissemination.ecmwf.int'
+ECMWF_FTP = 'diss.ecmwf.int'
 ECMWF_USER = 'wmo'
 ECMWF_PASS = 'essential'
 

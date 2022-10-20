@@ -72,8 +72,8 @@ SETTINGS_SECRET = {
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
         #"UCL_USERNAME": UCL_USERNAME,
         #"UCL_PASSWORD": UCL_PASSWORD,
-        "AZURE_STORAGE_ACCOUNT": AZURE_STORAGE_ACCOUNT,
-        "AZURE_CONNECTING_STRING": AZURE_CONNECTING_STRING,
+        #"AZURE_STORAGE_ACCOUNT": AZURE_STORAGE_ACCOUNT,
+        #"AZURE_CONNECTING_STRING": AZURE_CONNECTING_STRING,
         "admin_level": 3,
         "mock": False,
         "mock_nontrigger_typhoon_event": 'nontrigger_scenario',
@@ -94,6 +94,10 @@ MAIN_DIRECTORY='/home/fbf/'
 #MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
+ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
+
+maxDistanceFromCoast=1500 # max (km) distance to consider lead time calculation 
+
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  

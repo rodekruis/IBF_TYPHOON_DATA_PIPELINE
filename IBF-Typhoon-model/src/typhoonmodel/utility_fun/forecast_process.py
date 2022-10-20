@@ -75,6 +75,9 @@ class Forecast:
         admin = gpd.read_file(
             ADMIN_PATH
         )  # gpd.read_file(os.path.join(self.main_path,"data/gis_data/phl_admin3_simpl2.geojson"))
+        admin4 = gpd.read_file(
+            ADMIN4_PATH
+        )   
         pcode = pd.read_csv(
             os.path.join(self.main_path, "data/pre_disaster_indicators/pcode.csv")
         )
@@ -112,6 +115,8 @@ class Forecast:
         df_admin = sjoin(df, admin, how="left").dropna()
         self.df_admin = df_admin
         self.admin = admin
+        self.admin4 = admin4
+        self.maxDistanceFromCoast = maxDistanceFromCoast
 
         # Sometimes the ECMWF ftp server complains about too many requests
         # This code allows several retries with some sleep time in between
@@ -247,9 +252,10 @@ class Forecast:
                 ### run wind field function 
                 
                 is_land_fall=self.windfieldData(typhoons) 
+                
                 logger.info('finished wind field calculation')
           
-                if  is_land_fall ==1:#not bool(is_land_fall):                
+                if  is_land_fall in [1,3]:# 1 on track to landfall , 3 will pass next to land                
                     #check if calculated wind fields are empty 
                     logger.info(f'{typhoons}event didnt made landfall yet')
                     self.Activetyphoon_landfall[typhoons]='notmadelandfall'  
@@ -258,9 +264,13 @@ class Forecast:
                     logger.info(f'there isa lready a landfall event {typhoons}')
                     self.Activetyphoon_landfall[typhoons]='madelandfall' 
                     
-                elif is_land_fall ==0:
+                elif is_land_fall in [4,5]:
                     logger.info(f'there is an active event {typhoons} but far from land ')
                     self.Activetyphoon_landfall[typhoons]='Farfromland'
+                    
+                elif is_land_fall in [-1,6]:
+                    logger.info(f'there is an active event {typhoons} but far from land ')
+                    self.Activetyphoon_landfall[typhoons]='noEvent'
                     #json_path = self.Output_folder  + typhoons  
                     #self.db.uploadTyphoonDataNoLandfall(json_path)
                     #self.db.uploadTyphoonDataNoLandfall(json_path)
@@ -497,8 +507,7 @@ class Forecast:
         )
         return pre_disaster_inds
     
-    
-    def Number_affected(self,buildings):
+    def Number_affected(self,buildings,per_damage):
         '''
         calclate the number of affected population
         '''
@@ -506,12 +515,46 @@ class Forecast:
         import numpy as np
         if math.isnan(buildings):
             return np.nan
+        elif per_damage < 1: #to take into account model reliability 
+            Number_affected_pop=0            
         else:            
             Number_affected_pop=int(np.exp(6.80943612231606) * buildings ** 0.46982114400549513)
             return Number_affected_pop
-    
+        
+    def Calculate_dis(self,lon1, lat1, lon2, lat2):
+        """
+        Calculate the great circle distance between two points
+        on the earth (specified in decimal degrees)
+
+        All args must be of equal length.    
+
+        """
+        lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
+
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+
+        a = np.sin(dlat/2.0)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2.0)**2
+
+        c = 2 * np.arcsin(np.sqrt(a))
+        km = 6367 * c
+        return km
+
     def windfieldData(self, typhoons):
-        Made_land_fall=-1
+        '''
+        the function will return cases discribing landfall 
+        # -1 NO ACTIVE EVENTS 
+        # 0 THERE ARE ACTIVE EVENTS 
+        # 1 ON TRACK TO LANDFALL 
+        # 2 ALREADY MADE LANDFALL IN THE PAST
+        # 3 WILL PASS NEXT TO LAND 
+        # 4 WILL PASS VERY FAR FROM LAND 
+        # 5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND 
+        # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT 
+        
+        '''
+        Made_land_fall=-1 # -1 NO ACTIVE EVENTS 
+        landfall_time_hr = "72-hour" 
         tr_HRS = [
             tr
             for tr in self.fcast_data
@@ -533,7 +576,7 @@ class Forecast:
             logger.info(f"incomplete track data ")
 
         if tr_HRS != []:
-            Made_land_fall=+1
+            Made_land_fall=0 # 0 THERE ARE ACTIVE EVENTS 
             HRS_SPEED = (
                 tr_HRS[0].max_sustained_wind.values / 0.88
             ).tolist()  ############# 0.84 is conversion factor for ECMWF 10MIN TO 1MIN AVERAGE
@@ -663,22 +706,51 @@ class Forecast:
             logger.info(f'land points {point_inland_list}')
           
             if len(point_inland_list)>0:
-                #Made_land_fall=2
-                Made_land_fall=+1
+                Made_land_fall=1 # 1 ON TRACK TO LANDFALL  
                 landfalltime=min(point_inland_list)
                 landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y-%m-%d %H:%M:%S")
                 landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
                 #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
-                logger.info(f"CHECK LAND FALL TIME FINAL STEP {landfall_dellta}")
+                logger.info(f"CHECK LAND FALL TIME BASED ON POINT ON LAND {landfall_dellta}")
                 seconds = landfall_dellta.total_seconds()
                 hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
-                if hours < 0:
+                if hours >168:
+                    hours=168
+                elif hours < 0:
                     hours=0
-                    #Made_land_fall=1
-                    Made_land_fall=+1
+                    Made_land_fall=2 # 2 ALREADY MADE LANDFALL IN THE PAST
                 landfall_time_hr = str(hours) + "-hour"
             else:
-                landfall_time_hr = "72-hour"     
+                landfalltime=None        
+                admin1=self.admin4.copy()
+                
+                for row, data in hrs_track_df_.iterrows():
+                    admin1['dist']=admin1.apply(lambda x: self.Calculate_dis(x.LON,x.LAT,data.LON,data.LAT),axis=1)
+                    time_stamp=data.YYYYMMDDHH
+                    min_dist=np.min(admin1['dist'].values)
+                    if min_dist < self.maxDistanceFromCoast:
+                        dmin= min_dist
+                        landfalltime=time_stamp
+                        
+                if landfalltime:    
+                    Made_land_fall=3 # 3 WILL PASS NEXT TO LAND 
+                    landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y%m%d%H%M")
+                    landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
+                    #landfall_dellta = landfalltime_time_obj - datetime.utcnow()-9  # .strftime("%Y%m%d") 9hr for the latency 
+                    logger.info(f"CHECK LAND FALL TIME BASED ON CLOSEST POINT TO LAND {landfall_dellta}")
+                     
+                    seconds = landfall_dellta.total_seconds()
+                    hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
+                    if hours >168:
+                        hours=168
+                        Made_land_fall=4  # 4 WILL PASS VERY FAR FROM LAND 
+                    elif hours < 0:
+                        hours=0
+                        Made_land_fall=5  #  5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND 
+                    landfall_time_hr = str(hours) + "-hour"
+                else:
+                    landfall_time_hr = "72-hour"  
+                    Made_land_fall=6 # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT    
                 
                 
             
@@ -695,7 +767,8 @@ class Forecast:
             hrs_track_df["distance"] = DIST_TO_COAST_M
             
             #hrs_track_df.reset_index(inplace=True)  
-            logger.info(f'finished calculating distance to land{MIN_DIST_TO_COAST}')     
+            logger.info(f'finished calculating distance to land{MIN_DIST_TO_COAST}')    
+             
             if not wind_tracks_hrs.empty:    
                 wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
                 bins = [0,62,88, 117, 185, np.inf]
@@ -728,8 +801,9 @@ class Forecast:
                     json.dump(track_records, fp)
                        
 
-            # calculate wind field for each ensamble members
-            if data_forced:# and MIN_DIST_TO_COAST <200000:#in meters            
+            # calculate wind field for each ensamble members      
+                
+            if data_forced and Made_land_fall != 6: # and MIN_DIST_TO_COAST <200000:#in meters            
                 tracks = TCTracks()
                 tracks.data =data_forced # 
                 #tracks.equal_timestep(0.5)
@@ -825,7 +899,7 @@ class Forecast:
                     with open(json_file_path, "w") as fp:
                         json.dump(exposure_data, fp)       
                
-                elif Made_land_fall==0 and len(typhhon_df.index < 1):
+                elif Made_land_fall in [3,4,5] and len(typhhon_df.index < 1):
                     #Made_land_fall=2
                     
                     df_total_upload=self.pcode.copy()  #data frame with pcodes  
@@ -834,12 +908,12 @@ class Forecast:
                     df_total_upload['windspeed']=0 
                     df_total_upload['houses_affected']=0
                     df_total_upload['show_admin_area']=1
-                    df_total_upload['prob_within_50km']=0
+                    #df_total_upload['prob_within_50km']=0
                     df_total_upload['rainfall']=0
                      
 
                                   
-                    for layer in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+                    for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","alert_threshold"]: #"prob_within_50km",
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")
@@ -854,7 +928,7 @@ class Forecast:
                             
                         exposure_data["exposurePlaceCodes"] = exposure_place_codes
                         exposure_data["adminLevel"] = self.admin_level
-                        exposure_data["leadTime"] = "72-hour" #landfall_time_hr
+                        exposure_data["leadTime"] = landfall_time_hr
                         exposure_data["dynamicIndicator"] = layer
                         exposure_data["disasterType"] = "typhoon"
                         exposure_data["eventName"] = typhoons                     
@@ -862,9 +936,7 @@ class Forecast:
                         
                         with open(json_file_path, 'w') as fp:
                             json.dump(exposure_data, fp)
-                  
 
-            
         logger.info(f'finshed wind calculation') 
         return Made_land_fall
     
@@ -931,7 +1003,7 @@ class Forecast:
         #impact_scenarios = ["Damage_predicted"]
         
         df_impact_forecast['Damage_predicted_num'] = df_impact_forecast.apply(lambda x: 0.01*x['Damage_predicted']*x['VUL_Housing_Units'], axis=1)
-        df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast.apply(lambda x: self.Number_affected(x["Damage_predicted_num"]), axis=1).values
+        df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast.apply(lambda x: self.Number_affected(x["Damage_predicted_num"],x["Damage_predicted"]), axis=1).values
         
         df_impact_forecast=df_impact_forecast[~df_impact_forecast['Damage_predicted_num'].isna()]
         
