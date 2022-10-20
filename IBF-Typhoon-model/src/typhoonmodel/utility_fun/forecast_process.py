@@ -714,21 +714,26 @@ class Forecast:
                 logger.info(f"CHECK LAND FALL TIME BASED ON POINT ON LAND {landfall_dellta}")
                 seconds = landfall_dellta.total_seconds()
                 hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
-                if hours >168:
-                    hours=168
-                elif hours < 0:
+ 
+                if hours < 0:
                     hours=0
                     Made_land_fall=2 # 2 ALREADY MADE LANDFALL IN THE PAST
+                elif hours >168:
+                    hours=168
+                
                 landfall_time_hr = str(hours) + "-hour"
+                
             else:
                 landfalltime=None        
                 admin1=self.admin4.copy()
-                
+                dmin=self.maxDistanceFromCoast
                 for row, data in hrs_track_df_.iterrows():
                     admin1['dist']=admin1.apply(lambda x: self.Calculate_dis(x.LON,x.LAT,data.LON,data.LAT),axis=1)
                     time_stamp=data.YYYYMMDDHH
+                    
                     min_dist=np.min(admin1['dist'].values)
-                    if min_dist < self.maxDistanceFromCoast:
+                    
+                    if min_dist < dmin:
                         dmin= min_dist
                         landfalltime=time_stamp
                         
