@@ -543,14 +543,13 @@ class Forecast:
     def windfieldData(self, typhoons):
         '''
         the function will return cases discribing landfall 
-        # -1 NO ACTIVE EVENTS 
-        # 0 THERE ARE ACTIVE EVENTS 
+        # -1 NO ACTIVE EVENTS # no event upload
         # 1 ON TRACK TO LANDFALL 
-        # 2 ALREADY MADE LANDFALL IN THE PAST
+        # 2 ALREADY MADE LANDFALL IN THE PAST #upload from datalack
         # 3 WILL PASS NEXT TO LAND 
-        # 4 WILL PASS VERY FAR FROM LAND 
-        # 5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND 
-        # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT 
+        # 4 WILL PASS VERY FAR FROM LAND #upload track +0 values
+        # 5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND #upload track +0 values
+        # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT #no event upload
         
         '''
         Made_land_fall=-1 # -1 NO ACTIVE EVENTS 

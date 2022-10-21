@@ -16,10 +16,11 @@ try:
     AZURE_STORAGE_ACCOUNT=secret_client.get_secret("AZURE-STORAGE-ACCOUNT").value
     AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value   
      
-    ADMIN_LOGIN = secret_client.get_secret("IBF-TEST-LOGIN").value
-    ADMIN_PASSWORD=secret_client.get_secret("IBF-TEST-PASSWORD").value
-    IBF_API_URL=secret_client.get_secret("IBF-TEST-API-URL").value
-    
+    ADMIN_LOGIN = secret_client.get_secret("ADMIN-LOGIN").value
+    ADMIN_PASSWORD=secret_client.get_secret("IBF-PRO-PASSWORD").value
+    IBF_API_URL=secret_client.get_secret("IBF-URL").value
+ 
+ 
    
    # UCL_USERNAME=secret_client.get_secret("UCL-USERNAME").value
    # UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
@@ -38,8 +39,10 @@ except Exception as e:
 try:
     import os
     
-    ADMIN_LOGIN = os.environ['ADMIN_LOGIN']
-    IBF_URL=os.environ['IBF_API_URL']
+    ADMIN_LOGIN = os.environ['ADMIN-LOGIN']
+    IBF_API_URL=os.environ['IBF-URL']
+    ADMIN_PASSWORD = os.environ['IBF-PRO-PASSWORD']
+    
     #PHP_PASSWORD=os.environ['IBF_PASSWORD']
     DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE_STORAGE_ACCOUNT_NAME']        
     DATALAKE_STORAGE_ACCOUNT_KEY_ = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
@@ -67,7 +70,7 @@ countryCodes=['PHL']
 # COUNTRY SETTINGS
 SETTINGS_SECRET = {
     "PHL": {
-        "IBF_API_URL":IBF_API_URL,#'https://ibf-test.510.global/api/',
+        "IBF_API_URL":IBF_API_URL,# IBF_API_URL, 
         "ADMIN_LOGIN": ADMIN_LOGIN,
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
         #"UCL_USERNAME": UCL_USERNAME,
@@ -101,7 +104,7 @@ maxDistanceFromCoast=1500 # max (km) distance to consider lead time calculation
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-#ecmwf_remote_directory='20221020180000'#'20221014000000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20221021000000'#'20221014000000'#'20220923060000'#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NORU']
 
 ecmwf_remote_directory=None
