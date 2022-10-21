@@ -97,7 +97,7 @@ class DatabaseManager:
             logger.info(f'Uploaded data for indicator: {indicator} ')
             
     def uploadTyphoonData_no_event(self,json_path):  
-        for indicator in ["affected_population","alert_threshold"]:
+        for indicator in ["affected_population","houses_affected","alert_threshold"]:
             json_file_path =json_path +f'null_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)

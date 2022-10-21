@@ -145,7 +145,7 @@ def main():
                             typhoon_names='null'
                             df_total_upload['alert_threshold']=0
                             df_total_upload['affected_population']=0                     
-                            for layer in ["affected_population","alert_threshold"]:
+                            for layer in ["affected_population","houses_affected","alert_threshold"]:
                                 exposure_entry=[]
                                 # prepare layer
                                 logger.info(f"preparing data for {layer}")
