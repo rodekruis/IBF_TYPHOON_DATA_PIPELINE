@@ -171,7 +171,8 @@ def main():
                                     
                             #upload typhoon data        
                             json_path = fc.Output_folder
-                            fc.db.uploadTyphoonData_no_event(json_path)         
+                            fc.db.uploadTyphoonData_no_event(json_path)
+                            fc.db.uploadTrackData(json_path)         
               
                         else:
                             logger.info(f'typhoon{typhoon_names} is far from land')
