@@ -172,16 +172,9 @@ def main():
                             #upload typhoon data        
                             json_path = fc.Output_folder
                             fc.db.uploadTyphoonData_no_event(json_path)
-                            fc.db.uploadTrackData(json_path)         
-              
-                        else:
-                            logger.info(f'typhoon{typhoon_names} is far from land')
-                        
-                            
-
-                    #if there is no active typhoon 
-                '''
-                else: #
+                            fc.db.uploadTrackData(json_path)   
+            
+                else: ##if there is no active typhoon    
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
@@ -214,7 +207,7 @@ def main():
                     #upload typhoon data        
                     json_path = fc.Output_folder
                     fc.db.uploadTyphoonData_no_event(json_path)   
-                    '''
+                 
            
     except Exception as e:
         logger.error("Typhoon Data PIPELINE ERROR")

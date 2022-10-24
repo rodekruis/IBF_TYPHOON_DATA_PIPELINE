@@ -237,6 +237,7 @@ class Forecast:
             for typhoons in Active_Typhoon_events:
                 #
                 logger.info(f"Processing data {typhoons}")
+                self.Activetyphoon.append(typhoons)
                 
                 
  
@@ -260,11 +261,11 @@ class Forecast:
                     logger.info(f'{typhoons}event didnt made landfall yet')
                     self.Activetyphoon_landfall[typhoons]='notmadelandfall'  
                          
-                elif is_land_fall ==2:
-                    logger.info(f'there isa lready a landfall event {typhoons}')
+                elif is_land_fall in [2,5]:
+                    logger.info(f'there is already a landfall event {typhoons}')
                     self.Activetyphoon_landfall[typhoons]='madelandfall' 
                     
-                elif is_land_fall in [4,5]:
+                elif is_land_fall in [4]:
                     logger.info(f'there is an active event {typhoons} but far from land ')
                     self.Activetyphoon_landfall[typhoons]='Farfromland'
                     
@@ -282,7 +283,7 @@ class Forecast:
                 if os.path.isfile(wind_file_path):
                     calcuated_wind_fields=pd.read_csv(wind_file_path)                
                     if not calcuated_wind_fields.empty:
-                        self.Activetyphoon.append(typhoons)
+                        #self.Activetyphoon.append(typhoons)
                         self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)  
                         logger.info('go to data upload ')                          
                         '''
@@ -730,7 +731,7 @@ class Forecast:
                     admin1['dist']=admin1.apply(lambda x: self.Calculate_dis(x.LON,x.LAT,data.LON,data.LAT),axis=1)
                     time_stamp=data.YYYYMMDDHH
                     
-                    min_dist=np.min(admin1['dist'].values)
+                    min_dist=np.nanmin(admin1['dist'].values)
                     
                     if min_dist < dmin:
                         dmin= min_dist
@@ -807,7 +808,7 @@ class Forecast:
 
             # calculate wind field for each ensamble members      
                 
-            if data_forced and Made_land_fall != 6: # and MIN_DIST_TO_COAST <200000:#in meters            
+            if data_forced: # and MIN_DIST_TO_COAST <200000:#in meters            
                 tracks = TCTracks()
                 tracks.data =data_forced # 
                 #tracks.equal_timestep(0.5)
@@ -903,7 +904,7 @@ class Forecast:
                     with open(json_file_path, "w") as fp:
                         json.dump(exposure_data, fp)       
                
-                elif Made_land_fall in [3,4,5] and len(typhhon_df.index < 1):
+                elif Made_land_fall in [1,3,4]:# and len(typhhon_df.index < 1):
                     #Made_land_fall=2
                     
                     df_total_upload=self.pcode.copy()  #data frame with pcodes  
