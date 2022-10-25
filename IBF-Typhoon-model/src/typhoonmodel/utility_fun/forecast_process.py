@@ -862,10 +862,17 @@ class Forecast:
                     distan_track.append(dist_tr)
                     
                 df_intensity_ = pd.concat(list_intensity)
-                distan_track1 = pd.concat(distan_track)
-                typhhon_df =  pd.merge(df_intensity_, distan_track1,  how='left', on=['adm3_pcode','storm_id'])
-                
-                if len(typhhon_df.index > 1):
+                distan_track_f = pd.concat(distan_track)
+                typhhon_df =  pd.merge(df_intensity_, distan_track_f,  how='left', on=['adm3_pcode','storm_id'])
+                '''
+                distan_track_f.to_csv(
+                        os.path.join(self.Input_folder, f"{typhoons}_trackdata.csv"),
+                        index=False)
+                df_intensity_.to_csv(
+                        os.path.join(self.Input_folder, f"{typhoons}_intensityata.csv"),
+                        index=False)
+                '''
+                if not typhhon_df.empty: #if len(typhhon_df.index > 1):
                     typhhon_df.rename(
                         columns={"v_max": "HAZ_v_max", "dis_track_min": "HAZ_dis_track_min"},
                         inplace=True,
@@ -880,7 +887,7 @@ class Forecast:
                     
                             # windspeed
                     layer='windspeed'
-                    df_wind=typhhon_df
+                    df_wind=typhhon_df.copy()
                     df_wind.fillna(0, inplace=True)
                     df_wind['windspeed']=df_wind['HAZ_v_max']
                     
@@ -908,13 +915,32 @@ class Forecast:
                 elif Made_land_fall in [1,3,4]:# and len(typhhon_df.index < 1):
                     #Made_land_fall=2
                     
-                    df_total_upload=self.pcode.copy()  #data frame with pcodes  
+                    
+                    
+                    distan_track_f["dist_50"] = distan_track_f["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+                    probability_dist=distan_track_f.groupby('adm3_pcode').agg(
+                                    dist50k=('dist_50', 'sum'),
+                                    aver_dis=('dist_50', 'mean'),
+                                    Num_ens=('dist_50', 'count')).reset_index()
+                    
+                    probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1)
+                    
+                    
+                    
+        
+                    df_total_upload = pd.merge(self.pcode,
+                                     probability_dist.filter(["adm3_pcode", "prob_within_50km","aver_dis"]),
+                                     how="left",
+                                     left_on="adm3_pcode",
+                                     right_on="adm3_pcode"
+                                     )
+                    
+                    df_total_upload['prob_within_50km'] =  df_total_upload['prob_within_50km'].fillna('0')
                     df_total_upload['alert_threshold']=0
                     df_total_upload['affected_population']=0   
                     df_total_upload['windspeed']=0 
                     df_total_upload['houses_affected']=0
-                    df_total_upload['show_admin_area']=1
-                    df_total_upload['prob_within_50km']=0
+                    df_total_upload['show_admin_area']=df_total_upload["aver_dis"].apply(lambda x: 1 if x < 500 else 0)
                     df_total_upload['rainfall']=0
                      
 

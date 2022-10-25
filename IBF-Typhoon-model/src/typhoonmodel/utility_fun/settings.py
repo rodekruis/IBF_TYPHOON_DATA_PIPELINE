@@ -104,7 +104,7 @@ maxDistanceFromCoast=20000 # max (km) distance to consider lead time calculation
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-#ecmwf_remote_directory='20221024060000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20221025120000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NORU']
 
 ecmwf_remote_directory=None
