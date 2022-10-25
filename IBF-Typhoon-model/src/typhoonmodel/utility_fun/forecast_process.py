@@ -253,6 +253,7 @@ class Forecast:
                 ### run wind field function 
                 
                 is_land_fall=self.windfieldData(typhoons) 
+                logger.info(f'case____{is_land_fall}____finished wind field calculation')
                 
                 logger.info('finished wind field calculation')
           
@@ -913,12 +914,12 @@ class Forecast:
                     df_total_upload['windspeed']=0 
                     df_total_upload['houses_affected']=0
                     df_total_upload['show_admin_area']=1
-                    #df_total_upload['prob_within_50km']=0
+                    df_total_upload['prob_within_50km']=0
                     df_total_upload['rainfall']=0
                      
 
                                   
-                    for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","alert_threshold"]: #"prob_within_50km",
+                    for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")

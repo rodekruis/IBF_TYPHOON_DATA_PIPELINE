@@ -105,14 +105,16 @@ def main():
 
             else:
                 fc = Forecast(ecmwf_remote_directory,countryCodeISO3, admin_level)
+                logger.info('_________________finished data processing______________')
+                
                 if fc.Activetyphoon: #if it is not empty   
                     for typhoon_names in fc.Activetyphoon:
+                        logger.info('_________________upload data for {typhoon_names}______________')
                         if fc.Activetyphoon_landfall[typhoon_names]=='notmadelandfall':
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  
-                            EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                            EAP_TRIGGERED=fc.eap_status[typhoon_names]     
-                                          
+                            #EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
+                            #EAP_TRIGGERED=fc.eap_status[typhoon_names]                                               
                             fc.db.uploadTrackData(json_path)            
                             fc.db.uploadTyphoonData(json_path) 
                             fc.db.sendNotificationTyphoon() 
@@ -122,12 +124,9 @@ def main():
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
-                            logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')
-                            
-                                
+                            logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')                           
                             fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
                             logger.info(f'getting previous model run result from datalake  complete')
-                            
                             json_path = fc.Output_folder  + typhoon_names                          
                             fc.db.uploadTrackDataAfterlandfall(json_path)                             
                             fc.db.uploadTyphoonDataAfterlandfall(json_path) 
