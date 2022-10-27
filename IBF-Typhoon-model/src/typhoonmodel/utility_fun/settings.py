@@ -99,21 +99,21 @@ MAIN_DIRECTORY='/home/fbf/'
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
 
-maxDistanceFromCoast=20000 # max (km) distance to consider lead time calculation 
+maxDistanceFromCoast=2000 # max (km) distance to consider lead time calculation 
 
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-#ecmwf_remote_directory='20221025120000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20221026180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NORU']
 
 ecmwf_remote_directory=None
-Active_Typhoon_event_list=[]
+Active_Typhoon_event_list=['28W']
 High_resoluation_only_Switch=False
 
 
 typhoon_event_name=None
-ECMWF_CORRECTION_FACTOR=1 
+ECMWF_CORRECTION_FACTOR=1
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 
 
 WIND_SPEED_THRESHOLD=0
@@ -132,11 +132,11 @@ ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
 
 
 for dir_path in [Input_folder,Output_folder,rainfall_path]:
-    if os.path.exists(dir_path):
-        shutil.rmtree(dir_path)
+    if not os.path.exists(dir_path):
+        #shutil.rmtree(dir_path)
         os.makedirs(dir_path)
-    else:
-        os.makedirs(dir_path)
+    #else:
+        #os.makedirs(dir_path)
 
 
 
