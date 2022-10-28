@@ -104,11 +104,11 @@ maxDistanceFromCoast=2000 # max (km) distance to consider lead time calculation
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
 CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
  
-#ecmwf_remote_directory='20221026180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NORU']
 
-ecmwf_remote_directory=None
-Active_Typhoon_event_list=['28W']
+#ecmwf_remote_directory=None
+Active_Typhoon_event_list=['NALGAE']
 High_resoluation_only_Switch=False
 
 
@@ -149,3 +149,50 @@ Population_Growth_factor=1.15 #(1+0.02)^7 adust 2015 census data by 2%growth for
 
 Housing_unit_correction={'year':['2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022'],
                         'facor':[0.88,0.89,0.91,0.92,0.93,0.95,0.96,0.97,0.99,1.00,1.01,1.03,1.04,1.06,1.07,1.09,1.10]}
+
+
+#Trigger Values
+
+dref_probabilities = {
+    "100k": [100000, 0.5],
+    "80k": [80000, 0.6],
+    "70k": [70000, 0.7],
+    "50k": [50000, 0.8],
+    "30k": [30000, 0.95],
+}
+dref_probabilities_10 = {
+            "33": [33,'Moderate'],
+            "50": [50,'High'],
+            "70":[70,'Very High'],
+        }
+        
+cerf_probabilities = {
+    "80k": [80000, 0.5],
+    "50k": [50000, 0.6],
+    "30k": [30000, 0.7],
+    "10k": [10000, 0.8],
+    "5k": [5000, 0.95],
+}               
+
+START_probabilities = {
+    'PH166700000':{
+        "8k": [8000, 0.8],
+        "10k": [10000, 0.8],
+        "15k": [15000, 0.7],
+        "20k": [20000, 0.5],
+        "25k": [25000, 0.5], 
+        },
+    'PH021500000':{
+        "16k": [16000, 0.8],
+        "18k": [18000, 0.8],
+        "20k": [20000, 0.7],
+        "25k": [25000, 0.5],
+        "28.5k": [28500, 0.5], 
+        },
+    'PH082600000':{
+        "18k": [18000, 0.8],
+        "20k": [20000, 0.8],
+        "25k": [25000, 0.7],
+        "30k": [30000, 0.6],
+        "40k": [40000, 0.5],
+        }, }

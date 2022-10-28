@@ -71,6 +71,11 @@ class Forecast:
         self.cent=cent
         self.ECMWF_CORRECTION_FACTOR=ECMWF_CORRECTION_FACTOR
         self.ECMWF_LATENCY_LEADTIME_CORRECTION=ECMWF_LATENCY_LEADTIME_CORRECTION
+        
+        self.dref_probabilities=dref_probabilities
+        self.dref_probabilities_10=dref_probabilities_10
+        self.cerf_probabilities=cerf_probabilities
+        self.START_probabilities=START_probabilities
 
         admin = gpd.read_file(
             ADMIN_PATH
@@ -117,9 +122,25 @@ class Forecast:
         self.admin = admin
         self.admin4 = admin4
         self.maxDistanceFromCoast = maxDistanceFromCoast
+        self.data_filenames_list = {}
+        self.image_filenames_list = {}
+        self.typhoon_wind_data = {}
+        self.eap_status = {}
+        self.eap_status_bool = {}
+        self.hrs_track_data = {}
+        self.landfall_location = {}
+        self.Activetyphoon  = []  # Activetyphoon
+        self.Activetyphoon_landfall = {}    # Activetyphoon
+        self.Input_folder = Input_folder
+        self.rainfall_path = rainfall_path
+        self.Output_folder = Output_folder
+        self.WIND_SPEED_THRESHOLD =  WIND_SPEED_THRESHOLD  #  
+        
 
         # Sometimes the ECMWF ftp server complains about too many requests
         # This code allows several retries with some sleep time in between
+        
+        
         n_tries = 0
 
         while True:
@@ -184,24 +205,15 @@ class Forecast:
         ]
 
         self.fcast_data = fcast_data
+        
+ 
+        
         #self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
         #self.ecmwf = FcastData
         #fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
-        self.data_filenames_list = {}
-        self.image_filenames_list = {}
-        self.typhoon_wind_data = {}
-        self.eap_status = {}
-        self.eap_status_bool = {}
-        self.hrs_track_data = {}
-        self.landfall_location = {}
-        self.Activetyphoon  = []  # Activetyphoon
-        self.Activetyphoon_landfall = {}    # Activetyphoon
-        self.Input_folder = Input_folder
-        self.rainfall_path = rainfall_path
-        self.Output_folder = Output_folder
 
-        self.WIND_SPEED_THRESHOLD =  WIND_SPEED_THRESHOLD  #
         
+              
         if TropicalCycloneAdvisoryDomain_events != []:
 
             try:
@@ -255,13 +267,19 @@ class Forecast:
                 
                 #is_land_fall=self.windfieldData(typhoons) 
                 
-                #...........only for HRS model run.............
-                #is_land_fall=self.windfieldDataHRS(typhoons,data=HRS,MODEL='ECMWF')
+
                 
-                #...........for all model run.............
-                is_land_fall=self.windfieldDataHRS(typhoons,data=eventdata,MODEL='ECMWF')
                 
-                logger.info(f'case____{is_land_fall}____finished wind field calculation')
+                wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")  
+                if not os.path.isfile(wind_file_path):
+                    #...........for all model run.............                    
+                    is_land_fall=self.windfieldDataHRS(typhoons,data=eventdata,MODEL='ECMWF')    
+                    #...........only for HRS model run.............
+                    #is_land_fall=self.windfieldDataHRS(typhoons,data=HRS,MODEL='ECMWF')
+                                
+                    logger.info(f'case____{is_land_fall}____finished wind field calculation')
+                else:
+                    is_land_fall=1
                 
                 logger.info('finished wind field calculation')
           
@@ -284,7 +302,7 @@ class Forecast:
                
                 
                               
-                wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")  
+                
                               
                 if os.path.isfile(wind_file_path):
                     calcuated_wind_fields=pd.read_csv(wind_file_path)                
@@ -436,11 +454,13 @@ class Forecast:
         df_total = pd.merge(df_total,probability_impact.filter(['prob_within_50km','Mun_Code']),how="left",
             left_on="Mun_Code",
             right_on="Mun_Code")
+        
         final_df=df_total.filter(["Damage_predicted", "Trigger","Mun_Code", "storm_id","ens_id", "HAZ_dis_track_min","HAZ_v_max","is_ensamble","prob_within_50km"])
         
+        Final_df=final_df.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last')
         
         
-        return final_df
+        return Final_df
         
 
                 
@@ -520,13 +540,16 @@ class Forecast:
         '''
         import math
         import numpy as np
+        
         if math.isnan(buildings):
-            return np.nan
+            Number_affected_pop=np.nan
         elif per_damage < 1: #to take into account model reliability 
             Number_affected_pop=0            
         else:            
-            Number_affected_pop=int(np.exp(6.80943612231606) * buildings ** 0.46982114400549513)
-            return Number_affected_pop
+            Number_affected_pop=int(np.exp(6.80943612231606) * buildings ** 0.46982114400549513)            
+
+             
+        return Number_affected_pop
         
     def Calculate_dis(self,lon1, lat1, lon2, lat2):
         """
@@ -646,6 +669,10 @@ class Forecast:
         return landfall_dict     
 
     def windfieldData(self, typhoons):
+        '''
+        calculate windfield per grid 
+        
+        '''
 
         
         tr_HRS = [
@@ -694,7 +721,7 @@ class Forecast:
             typhoon_tracks["timestampOfTrackpoint"] = pd.to_datetime(
                 typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
             ).dt.strftime("%m-%d-%Y %H:%M:%S")
-            
+            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_full_hrs_track.csv"),index=False) 
             typhoon_tracks["HH"] = pd.to_datetime(
                 typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
             ).dt.strftime("%H:%M")
@@ -1006,7 +1033,8 @@ class Forecast:
         df_impact_forecast['Damage_predicted_num'] = df_impact_forecast.apply(lambda x: 0.01*x['Damage_predicted']*x['VUL_Housing_Units'], axis=1)
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast.apply(lambda x: self.Number_affected(x["Damage_predicted_num"],x["Damage_predicted"]), axis=1).values
         
-        df_impact_forecast=df_impact_forecast[~df_impact_forecast['Damage_predicted_num'].isna()]
+        #df_impact_forecast=df_impact_forecast[~df_impact_forecast['Damage_predicted_num'].isna()]
+        df_impact_forecast.fillna(0, inplace=True) 
         
         
         csv_file_test = self.Output_folder + "Average_Impact_full_" + typhoon_names + ".csv"        
@@ -1042,7 +1070,8 @@ class Forecast:
              "HAZ_dis_track_min": "min",
              "HAZ_v_max":"max",
              "prob_within_50km":"mean"}
-        )
+        ).reset_index()
+        
         impact["number_affected_pop__prediction"] = impact["number_affected_pop__prediction"].astype("int") 
         
         impact['Damage_predicted_num'] = impact.apply(lambda x: 0.01*x['Damage_predicted']*x['VUL_Housing_Units'], axis=1)
@@ -1058,8 +1087,8 @@ class Forecast:
         impact_df1 =impact_HRS# pd.merge(impact2,probability_50km,how="left", left_on="Mun_Code", right_on="Mun_Code",    )
         
   
-        
-        impact_HRS.rename(
+        impact_HRS2=impact.copy()
+        impact_HRS2.rename(
             columns={
                 "Damage_predicted_num": "num_houses_affected",
                 "Damage_predicted": "houses_affected",
@@ -1072,256 +1101,39 @@ class Forecast:
         
         logger.info(f"{len(impact_HRS)}")
        
-        impact_df = pd.merge(
+        impact_df5 = pd.merge(
             self.pcode,
-            impact_HRS.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed","affected_population"]),
+            impact_HRS2.filter(["Mun_Code", "prob_within_50km","houses_affected", "WEA_dist_track","windspeed","affected_population"]),
             how="left", left_on="adm3_pcode", right_on="Mun_Code"
         )
-        impact_df["show_admin_area"] = impact_df["WEA_dist_track"].apply(lambda x: 1 if x < self.Show_Areas_on_IBF_radius else 0)
         
-        impact_df = impact_df.fillna(0)
-        impact_df = impact_df.drop_duplicates("Mun_Code")
-        impact_df["alert_threshold"] = 0
+        impact_df5["show_admin_area"] = impact_df5["WEA_dist_track"].apply(lambda x: 1 if x < self.Show_Areas_on_IBF_radius else 0)
+        
+        impact_df5 = impact_df5.fillna(0)
+        
+        #impact_df = impact_df.drop_duplicates("Mun_Code")
+        impact_df5["alert_threshold"] = 0
         
 
         
 
         # ------------------------ calculate and plot probability National -----------------------------------
+        eap_status_bool=self.drefTriggerCheck(typhoon_names,df_impact_forecast) 
+        self.cerfTriggerCheck(typhoon_names,df_impact_forecast)  
+        self.startTriggerCheck(typhoon_names,df_impact_forecast)       
         
-        dref_probabilities = {
-            "100k": [100000, 0.5],
-            "80k": [80000, 0.6],
-            "70k": [70000, 0.7],
-            "50k": [50000, 0.8],
-            "30k": [30000, 0.95],
-        }
+        
+        #eap_status_bool=0
+        
+        impact_df5["alert_threshold"]=impact_df5.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
 
-
-        dref_probabilities_10 = {
-                    "33": [33,'Moderate'],
-                    "50": [50,'High'],
-                    "70":[70,'Very High'],
-                }
-
-
-        cerf_probabilities = {
-            "80k": [80000, 0.5],
-            "50k": [50000, 0.6],
-            "30k": [30000, 0.7],
-            "10k": [10000, 0.8],
-            "5k": [5000, 0.95],
-        }
-                
-                
-        START_probabilities = {
-            'PH166700000':{
-                "8k": [8000, 0.8],
-                "10k": [10000, 0.8],
-                "15k": [15000, 0.7],
-                "20k": [20000, 0.5],
-                "25k": [25000, 0.5],    
-                
-                },
-            'PH021500000':{
-                "16k": [16000, 0.8],
-                "18k": [18000, 0.8],
-                "20k": [20000, 0.7],
-                "25k": [25000, 0.5],
-                "28.5k": [28500, 0.5], 
-        
-                },
-            'PH082600000':{
-                "18k": [18000, 0.8],
-                "20k": [20000, 0.8],
-                "25k": [25000, 0.7],
-                "30k": [30000, 0.6],
-                "40k": [40000, 0.5],
-                },
-        }
-        # Only select regions 5 and 8
-        cerf_regions = ["PH05", "PH08","PH16"]
-        
-        ######## calculate probability for impact
-       # probability_impact = df_impact_forecast.groupby("storm_id").agg(        {"Damage_predicted_num": "sum"}       )
-        
-        
-        probability_impact=df_impact_forecast.groupby('ens_id').agg(
-                NUmber_of_affected_municipality=('Mun_Code','count'),
-                Total_buildings_ML_Model=('Damage_predicted_num', sum),
-                Trigger_ML_Model=('Trigger', sum)).reset_index()
-            
-        ### DREF trigger based on 10% damage per manucipality  
-        DREF_trigger_list_10={}
-        
-        probability_impact['Trigger']=probability_impact.apply(lambda x:1 if x.Trigger_ML_Model>2 else 0,axis=1)
-        
-        agg_impact_10 = probability_impact["Trigger"].values
-        logger.info(f'calculate trigger threshold{len(agg_impact_10)}')
-        if len(agg_impact_10)>0:
-            trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
-        else:
-            trigger_stat_dref10 =0
-        logger.info('finished  calculating trigger threshold')    
-        EAP_TRIGGERED = "no"
-        eap_status_bool=0
-        Trigger_status=True
- 
-     
-
-        for key, values in dref_probabilities_10.items(): 
-            dref_trigger_status10 = {}
-            thershold=values[1]
-            if  (trigger_stat_dref10 > values[0]):
-                trigger_stat_1=True
-                EAP_TRIGGERED = "yes"
-                eap_status_bool = 1
- 
-            else:
-                trigger_stat_1=False
-                EAP_TRIGGERED = "no"
-    
-            dref_trigger_status10['triggered_prob'] = thershold 
-            dref_trigger_status10['EVENT'] = typhoon_names 
-            dref_trigger_status10['trigger_stat'] = trigger_stat_1 
-            DREF_trigger_list_10[key] = dref_trigger_status10  
-            
-        self.eap_status[typhoon_names] = EAP_TRIGGERED
-        self.eap_status_bool[typhoon_names] = eap_status_bool  
-        
-        impact_df["alert_threshold"]=impact_df.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
- 
-        json_file_path = (
-            self.Output_folder + typhoon_names + "_dref_trigger_status_10_percent" + ".csv"
-        )
-        pd.DataFrame.from_dict(DREF_trigger_list_10, orient="index").query('trigger_stat==@Trigger_status').to_csv(
-            json_file_path
-        )
-        
         #save to file 
         csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"        
-        impact_df.to_csv(csv_file2)
+        impact_df5.to_csv(csv_file2)
       
-        
-        #probability based on number of buildings 
-        dref_trigger_status = {}
-        
-        
-        agg_impact = probability_impact["Total_buildings_ML_Model"].values
-    
-        for key, values in dref_probabilities.items():
-            
-            trigger_stat = (
-                sum(i > values[0] for i in agg_impact) / (len(agg_impact)) > values[1]
-            )
-            dref_trigger_status[key] = trigger_stat
-            dref_trigger_status['threshold'] = sum(self.Population_Growth_factor*i > values[0] for i in agg_impact) / (len(agg_impact)) 
-      
-
+         
                 
-
-        json_file_path = (
-            self.Output_folder + typhoon_names + "_dref_trigger_status_Num_Bldg" + ".csv"
-        )
-        pd.DataFrame.from_dict(dref_trigger_status, orient="index").to_csv(
-            json_file_path
-        )
-        
-        
-
-        
-        
-        #START Trigger Status 
-        start_trigger_status = {}
-        
-        provinces_names={'PH166700000':'SurigaoDeLnorte','PH021500000':'Cagayan','PH082600000':'EasternSamar'}        
-        df_impact_forecast['Prov_Code']=df_impact_forecast.apply(lambda x:str(x.Mun_Code[:6])+'00000',axis=1)
-        
-        df_impact_forecast_start=df_impact_forecast.query('Prov_Code in @provinces_names.keys()')
-        if not df_impact_forecast_start.empty:
        
-            for provinces in provinces_names.keys():#['PH166700000','PH021500000','PH082600000']:
-                triggers=START_probabilities[provinces]
-                prov_name=provinces_names[provinces]
-                df_trig=df_impact_forecast.query('Prov_Code==@provinces')
-                if not df_trig.empty:  
-                    probability_impact2=df_trig.groupby(['ens_id']).agg(
-                        NUmber_of_affected_municipality=('Mun_Code','count'),
-                        average_ML_Model=('Damage_predicted', 'mean'),
-                        Total_affected_ML_Model=('number_affected_pop__prediction', sum),
-                        Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
-                    ######## calculate probability for impact                
-                    
-                    agg_impact_prov = probability_impact2["Total_affected_ML_Model"].values        
-                    thershold='NAN'               
-                    
-
-                    for key, values in triggers.items():
-                    
-                        start_trigger_status1 = {}
-                        trigger_stat_prov = sum(i > values[0] for i in agg_impact_prov) /len(agg_impact_prov)     
-                        #start_trigger_status1[key] = int(trigger_stat)
-                        start_trigger_status1['thr_name']=key
-                        start_trigger_status1['thr_value']=trigger_stat_prov
-
-                        if values[1] < trigger_stat_prov:
-                            trigger_stat_=True
-                            thershold=key 
-                        else:
-                            trigger_stat_=False
-                            thershold=key
-                    #start_trigger_list.append({'event':event_name, 'province':prov_name,                                      'lead_time':lead_time2,                                      'status':trigger_stat_,                                      'threshold':thershold})
-                    
-                        #start_trigger_status['event'] = event_name
-        
-
-                        start_trigger_status1['PROVINCE'] = prov_name
-                        start_trigger_status1['EVENT'] = typhoon_names       
-                        start_trigger_status1['trigger_stat'] = trigger_stat_  
-                        start_trigger_status[key] = start_trigger_status1
-            
-                    #start_trigger[prov_name] =start_trigger_status
-                    
-                #start_trigger_list.append(start_trigger_status)
-            #start_trigger_list[event_name] = start_trigger_status
-            
-            json_file_path = (
-                self.Output_folder + typhoon_names + "_start_trigger_status" + ".csv"
-            )
-            pd.DataFrame.from_dict(start_trigger_status, orient="index").to_csv(
-                json_file_path
-            )
-        
-        
-                
-        #CERF Trigger Status         
-        cerf_trigger_status = {}
-        
-        df_impact_forecast["reg"] = df_impact_forecast["Mun_Code"].apply(
-            lambda x: x[:4]
-        )
-        df_impact_forecast_cerf = df_impact_forecast.query("reg in @cerf_regions")
-        
-        if not df_impact_forecast_cerf.empty:            
-            probability_impact = df_impact_forecast_cerf.groupby("ens_id").agg(
-                {"Damage_predicted_num": "sum"}
-            )
-            
-            probability_impact.reset_index(inplace=True)
-            
-            agg_impact = probability_impact["Damage_predicted_num"].values
-
-            for key, values in cerf_probabilities.items():
-                cerf_trigger_status[key] = (
-                    sum(i > values[0] for i in agg_impact) / (len(agg_impact)) > values[1]
-                )
-
-            json_file_path = (
-                self.Output_folder + typhoon_names + "_cerf_trigger_status" + ".csv"
-            )
-            pd.DataFrame.from_dict(cerf_trigger_status, orient="index").to_csv(
-                json_file_path
-            )
-            
 
         #############################################################
 
@@ -1366,13 +1178,10 @@ class Forecast:
             right_on="adm3_pcode",
         ).filter(selected_columns)
         
-        #df_hazard2=df_hazard2.query("is_ensamble==@check_ensamble")
-        #df_hazard2.rename(columns={"HAZ_rainfall_max_24h": "windspeed"},inplace=True)
+
         
         df_hazard2=df_hazard2.filter(["adm3_pcode","rainfall", "windspeed"])
-        
-        # "","adm3_en","glat","adm3_pcode","adm2_pcode","adm1_pcode","glon","GEN_mun_code","probability_dist50","impact","WEA_dist_track"
-        
+ 
         csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"
  
         Model_output_data=pd.read_csv(csv_file2).filter(["adm3_pcode","prob_within_50km","houses_affected",
@@ -1439,13 +1248,12 @@ class Forecast:
 
         with open(json_file_path, "w") as fp:
             json.dump(exposure_data, fp)          
-        
-        
-        
-        # track
 
-        typhoon_track = self.hrs_track_data[typhoon_names].copy()
+        # track
+        #typhoon_track = self.hrs_track_data[typhoon_names].copy()
         
+        typhoon_track =pd.read_csv(os.path.join(self.Input_folder, f"{typhoon_names}_ecmwf_hrs_track.csv")) 
+        '''
         typhoon_track["timestampOfTrackpoint"] = pd.to_datetime(
             typhoon_track["YYYYMMDDHH"], format="%Y%m%d%H%M"
         ).dt.strftime("%m-%d-%Y %H:%M:%S")
@@ -1453,7 +1261,7 @@ class Forecast:
         typhoon_track["HH"] = pd.to_datetime(
             typhoon_track["YYYYMMDDHH"], format="%Y%m%d%H%M"
         ).dt.strftime("%H:%M")
-        
+        '''
         typhoon_track.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
         wind_track = typhoon_track[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]       
         exposure_place_codes = []
@@ -1535,8 +1343,206 @@ class Forecast:
             logger.info(f"no data for {layer}")
             pass
         logger.info("finshed preparing data for all dynamic layers")
+        
+    def cerfTriggerCheck(self,typhoon_names,df_impact_forecast):
+        
+        df_impact_forecast=df_impact_forecast.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last')        
+
+        # Only select regions 5 and 8
+        cerf_regions = ["PH05", "PH08","PH16"]
+        #CERF Trigger Status         
+        Cerf_trigger_status = {}
+        
+        df_impact_forecast["reg"] = df_impact_forecast["Mun_Code"].apply(
+            lambda x: x[:4]
+        )
+        df_impact_forecast_cerf = df_impact_forecast.query("reg in @cerf_regions")
+        
+        if not df_impact_forecast_cerf.empty:            
+            probability_impact = df_impact_forecast_cerf.groupby("ens_id").agg(
+                {"Damage_predicted_num": "sum"}
+            )
+            
+            probability_impact.reset_index(inplace=True)
+            
+            agg_impact = probability_impact["Damage_predicted_num"].values
+
+            for key, values in self.cerf_probabilities.items():
+                pred_prob= sum(i > values[0] for i in agg_impact) / (len(agg_impact))
+                pred_status=pred_prob > values[1]
+                
+                Cerf_trigger_status[key]=[values[1],pred_status,pred_prob]
+
+            json_file_path = (
+                self.Output_folder + typhoon_names + "_cerf_trigger_status" + ".csv"
+            )
+       
+            
+            
+            cerf_trigger_status=pd.DataFrame.from_dict(Cerf_trigger_status, orient="index").reset_index()
+            cerf_trigger_status.rename(columns={"index": "Threshold",
+                                                 0: "Trigger probability threshold",
+                                                 1: "Trigger status",
+                                                 2: "Predicted Probability"}).to_csv(json_file_path)
+            
+            
+
+    def drefTriggerCheck(self,typhoon_names,df_impact_forecast): 
+        
+        df_impact_forecast=df_impact_forecast.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last')       
+
+        ######## calculate probability for impact
+        
+        probability_impact=df_impact_forecast.groupby('ens_id').agg(
+                NUmber_of_affected_municipality=('Mun_Code','count'),
+                Total_buildings_ML_Model=('Damage_predicted_num', sum),
+                Trigger_ML_Model=('Trigger', sum)).reset_index()
+            
+        ### DREF trigger based on 10% damage per manucipality  
+        DREF_trigger_list_10={}
+        
+        
+        probability_impact['Trigger3x10']=probability_impact.apply(lambda x:1 if x.Trigger_ML_Model>2 else 0,axis=1)
+        
+        agg_impact_10 = probability_impact["Trigger3x10"].values
+        
+        logger.info(f'calculate trigger threshold{len(agg_impact_10)}')
+        
+        if len(agg_impact_10)>0:
+            trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
+        else:
+            trigger_stat_dref10 =0
+        logger.info('finished  calculating trigger threshold')    
+        EAP_TRIGGERED = "no"
+        eap_status_bool=0
+        Trigger_status=True
+ 
+     
+
+        for key, values in self.dref_probabilities_10.items(): 
+            dref_trigger_status10 = {}
+            thershold=values[1]
+            if  (trigger_stat_dref10 > values[0]):
+                trigger_stat_1=True
+                EAP_TRIGGERED = "yes"
+                eap_status_bool = 1
+ 
+            else:
+                trigger_stat_1=False
+                EAP_TRIGGERED = "no"
+    
+            dref_trigger_status10['triggered_prob'] = thershold 
+            dref_trigger_status10['EVENT'] = typhoon_names 
+            dref_trigger_status10['trigger_stat'] = trigger_stat_1 
+            
+            #DREF_trigger_list_10[key] = dref_trigger_status10
+            DREF_trigger_list_10[key] = [thershold,trigger_stat_1]#dref_trigger_status10   
+            
+        self.eap_status[typhoon_names] = EAP_TRIGGERED
+        self.eap_status_bool[typhoon_names] = eap_status_bool
+        
+        #---------------------------------------------  
+   
+        json_file_path = (
+            self.Output_folder + typhoon_names + "_dref_trigger_status_10_percent" + ".csv"
+        )
+        DREF_trigger_list_10=pd.DataFrame.from_dict(DREF_trigger_list_10, orient="index").reset_index()
+        
+        DREF_trigger_list_10.rename(columns={"index": "Threshold", 0: "Scenario",1: "Trigger status"}).to_csv(
+            json_file_path
+        )
+        
+        #probability based on number of buildings 
+        dref_trigger_status = {}
+        
+        
+        agg_impact = probability_impact["Total_buildings_ML_Model"].values
+    
+        for key, values in self.dref_probabilities.items():
+            
+            trigger_stat = (
+                sum([1 for i in agg_impact if  i > values[0]]) / (len(agg_impact)) > values[1]
+            )
+            thr=(sum([1 for i in agg_impact if  i > values[0]]) / (len(agg_impact)))
+            
+            dref_trigger_status[key] = [trigger_stat,values[1],thr]
+            
+        dref_trigger_status=pd.DataFrame.from_dict(dref_trigger_status, orient="index").reset_index()
+        
+        json_file_path = (
+            self.Output_folder + typhoon_names + "_dref_trigger_status_Num_Bldg" + ".csv"
+        )
+                
+        dref_trigger_statusf=dref_trigger_status.rename(columns={"index": "Threshold", 0: "Status",1: "threshold_probability",2: "Pridiction_probability"})
+        dref_trigger_statusf.to_csv(json_file_path )
+        
+        if any(dref_trigger_statusf['Status'].values):
+            eap_status_bool_=1
+        else:
+            eap_status_bool_=0
+            
+        return eap_status_bool_
+        
+        
 
 
+
+
+    def startTriggerCheck(self,typhoon_names,df_impact_forecast):
+        #START Trigger Status 
+        df_impact_forecast=df_impact_forecast.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last') 
+        start_trigger_status = {}
+
+             
+       
+        # Only select regions 5 and 8
+     
+        provinces_names={'PH166700000':'SurigaoDeLnorte','PH021500000':'Cagayan','PH082600000':'EasternSamar'}   
+        df_impact_forecast['Prov_Code']=df_impact_forecast.apply(lambda x:str(x.Mun_Code[:6])+'00000',axis=1)
+        
+        df_impact_forecast_start=df_impact_forecast.query('Prov_Code in @provinces_names.keys()')
+        
+        if not df_impact_forecast_start.empty:       
+            for provinces in provinces_names.keys():#['PH166700000','PH021500000','PH082600000']:
+                triggers=self.START_probabilities[provinces]
+                prov_name=provinces_names[provinces]
+                df_trig=df_impact_forecast.query('Prov_Code==@provinces')
+                
+                if not df_trig.empty:  
+                    probability_impact2=df_trig.groupby(['ens_id']).agg(
+                        NUmber_of_affected_municipality=('Mun_Code','count'),
+                        average_ML_Model=('Damage_predicted', 'mean'),
+                        Total_affected_ML_Model=('number_affected_pop__prediction', 'sum'),
+                        Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
+                    ######## calculate probability for impact                
+                    
+                    agg_impact_prov = probability_impact2["Total_affected_ML_Model"].values        
+           
+                    
+
+                    for key, values in triggers.items():
+                        trigger_stat_prov = (sum([1 for i in agg_impact_prov if i > values[0]]) /len(agg_impact_prov))  
+                        
+                        trigger_stat_ = trigger_stat_prov > values[1]
+    
+                        start_trigger_status[key] = [prov_name,values[1],trigger_stat_,trigger_stat_prov]
+
+
+            json_file_path = (
+                self.Output_folder + typhoon_names + "_start_trigger_status" + ".csv"
+            )
+            
+            start_trigger_status=pd.DataFrame.from_dict(start_trigger_status, orient="index").reset_index()
+            start_trigger_status.rename(columns={"index": "Threshold",
+                                                 0: "province",
+                                                 1: "Trigger probability threshold",
+                                                 2: "Trigger status",
+                                                 3: "Predicted Probability"}).to_csv(json_file_path)
+            
+
+
+        
+        
     def windfieldDataHRS(self, typhoons,data,MODEL='HWRF'):
         
         data_forced=data.copy()  # 
