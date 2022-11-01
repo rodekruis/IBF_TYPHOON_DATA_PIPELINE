@@ -104,11 +104,14 @@ def main():
                 db.sendNotificationTyphoon()
 
             else:
-                fc = Forecast(ecmwf_remote_directory,countryCodeISO3, admin_level)
+                output_folder=Output_folder
+                active_Typhoon_event_list=Active_Typhoon_event_list
+                fc = Forecast(ecmwf_remote_directory,output_folder, active_Typhoon_event_list,countryCodeISO3, admin_level)
                 logger.info('_________________finished data processing______________')
                 
-                if fc.Activetyphoon: #if it is not empty   
-                    for typhoon_names in fc.Activetyphoon:
+                if fc.Activetyphoon_landfall: #if it is not empty
+                    for typhoon_names in fc.Activetyphoon_landfall.keys():   
+                    #for typhoon_names in fc.Activetyphoon:
                         logger.info('_________________upload data for {typhoon_names}______________')
                         if fc.Activetyphoon_landfall[typhoon_names]=='notmadelandfall':
                             # upload data
@@ -124,12 +127,15 @@ def main():
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
-                            logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')                           
-                            fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
-                            logger.info(f'getting previous model run result from datalake  complete')
-                            json_path = fc.Output_folder  + typhoon_names                          
-                            fc.db.uploadTrackDataAfterlandfall(json_path)                             
-                            fc.db.uploadTyphoonDataAfterlandfall(json_path) 
+                            logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')   
+                            try:                                                        
+                                fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
+                                logger.info(f'getting previous model run result from datalake  complete')
+                                json_path = fc.Output_folder  + typhoon_names                          
+                                fc.db.uploadTrackDataAfterlandfall(json_path)                             
+                                fc.db.uploadTyphoonDataAfterlandfall(json_path)
+                            except:
+                                pass
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='Farfromland':   
                             logger.info(f'uploadng data for event far from land ')
@@ -143,8 +149,9 @@ def main():
                             df_total_upload=fc.pcode.copy()  #data frame with pcodes 
                             typhoon_names='null'
                             df_total_upload['alert_threshold']=0
-                            df_total_upload['affected_population']=0                     
-                            for layer in ["affected_population","alert_threshold"]:
+                            df_total_upload['affected_population']=0  
+                            df_total_upload['houses_affected']=0                     
+                            for layer in ["affected_population","houses_affected","alert_threshold"]:
                                 exposure_entry=[]
                                 # prepare layer
                                 logger.info(f"preparing data for {layer}")
@@ -171,15 +178,16 @@ def main():
                             #upload typhoon data        
                             json_path = fc.Output_folder
                             fc.db.uploadTyphoonData_no_event(json_path)
-                            fc.db.uploadTrackData(json_path)   
+                            #fc.db.uploadTrackData(json_path)   
             
                 else: ##if there is no active typhoon    
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
                     df_total_upload['alert_threshold']=0
-                    df_total_upload['affected_population']=0                     
-                    for layer in ["affected_population","alert_threshold"]:
+                    df_total_upload['affected_population']=0    
+                    df_total_upload['houses_affected']=0                     
+                    for layer in ["affected_population",'houses_affected',"alert_threshold"]:
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")

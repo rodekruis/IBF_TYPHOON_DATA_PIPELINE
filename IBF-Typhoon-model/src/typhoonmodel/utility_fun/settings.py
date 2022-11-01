@@ -86,11 +86,33 @@ SETTINGS_SECRET = {
     },
 }
 
+
+start_time = datetime.now()
+
+#ecmwf_remote_directory='20221031060000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#Active_Typhoon_event_list=['NALGAE']
+
+ecmwf_remote_directory=None
+Active_Typhoon_event_list=[]
+High_resoluation_only_Switch=False
+
+
+typhoon_event_name=None
+ECMWF_CORRECTION_FACTOR=1
+ECMWF_LATENCY_LEADTIME_CORRECTION=10 
+longtiude_limit_leadtime=120 # if track pass this point consider it has made landfall 
+
+WIND_SPEED_THRESHOLD=0
+Wind_damage_radius=300 #will be updated based on maximum_radius varaible from model 
+Show_Areas_on_IBF_radius=400
+
+Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
+data_point = start_time.strftime("%Y%m%d")      
+ 
 ###################
 ## PATH SETTINGS ##
 ###################
 
-start_time = datetime.now()
 
 MAIN_DIRECTORY='/home/fbf/'
 
@@ -102,42 +124,23 @@ ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
 maxDistanceFromCoast=2000 # max (km) distance to consider lead time calculation 
 
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
-CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
- 
-ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-#Active_Typhoon_event_list=['NORU']
-
-#ecmwf_remote_directory=None
-Active_Typhoon_event_list=['NALGAE']
-High_resoluation_only_Switch=False
-
-
-typhoon_event_name=None
-ECMWF_CORRECTION_FACTOR=1
-ECMWF_LATENCY_LEADTIME_CORRECTION=10 
-
-WIND_SPEED_THRESHOLD=0
-Wind_damage_radius=300 #will be updated based on maximum_radius varaible from model 
-Show_Areas_on_IBF_radius=400
-
-Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
-data_point = start_time.strftime("%Y%m%d")      
+CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson' 
  
 Input_folder = MAIN_DIRECTORY+ 'forecast/Input/'
 Output_folder = MAIN_DIRECTORY+ 'forecast/Output/'
-ECMWF_folder = MAIN_DIRECTORY+'forecast/Input/ECMWF/'
-rainfall_path = MAIN_DIRECTORY+'forecast/Input/rainfall/'
+ECMWF_folder = Input_folder+'ECMWF/'
+rainfall_path =MAIN_DIRECTORY+ 'forecast/rainfall/' 
+
 mock_data_path = MAIN_DIRECTORY+'data/mock/'
 ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
 
 
 for dir_path in [Input_folder,Output_folder,rainfall_path]:
-    if not os.path.exists(dir_path):
-        #shutil.rmtree(dir_path)
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
         os.makedirs(dir_path)
-    #else:
-        #os.makedirs(dir_path)
-
+    else:
+        os.makedirs(dir_path)
 
 
 
