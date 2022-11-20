@@ -112,7 +112,7 @@ def main():
                 if fc.Activetyphoon_landfall: #if it is not empty
                     for typhoon_names in fc.Activetyphoon_landfall.keys():   
                     #for typhoon_names in fc.Activetyphoon:
-                        logger.info('_________________upload data for {typhoon_names}______________')
+                        logger.info(f'_________________upload data for {typhoon_names}______________')
                         if fc.Activetyphoon_landfall[typhoon_names]=='notmadelandfall':
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  

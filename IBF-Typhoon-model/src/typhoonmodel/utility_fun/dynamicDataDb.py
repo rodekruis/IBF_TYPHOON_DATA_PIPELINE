@@ -78,11 +78,10 @@ class DatabaseManager:
             logger.info(f'Uploaded data for indicator: {indicator} ')
  
     def uploadTyphoonDataAfterlandfall(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             with open(json_file_path) as json_file:
                 body = json.load(json_file)
-                #body['adminLevel'] = self.admin_level
                 body['leadTime']= '0-hour'
                 self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
             logger.info(f'Uploaded data for indicator: {indicator} ')
@@ -159,20 +158,9 @@ class DatabaseManager:
         json_file_path =json_path +'_tracks' + '.json'
         with open(json_file_path) as json_file:
             track_records = json.load(json_file)
-        disasterType = self.getDisasterType()
-        body=track_records
-        body2={}
-        body2['countryCodeISO3']=body['countryCodeISO3']
-        body2['leadTime']='0-hour'
-        body2['eventName']=body['eventName']
-        exposure=[]
-        for value in body['trackpointDetails']:
-            value['windspeed']=int(value['windspeed'])
-            exposure.append(value)
-                
-        body2['trackpointDetails']=exposure
-    
-        self.apiPostRequest('typhoon-track/', body=body2)
+        disasterType = self.getDisasterType() 
+        track_records['leadTime']= '0-hour'    
+        self.apiPostRequest('typhoon-track/', body=track_records)
         logger.info(f'Uploaded track_data: {json_file_path}')
         
     def uploadRasterFile(self):

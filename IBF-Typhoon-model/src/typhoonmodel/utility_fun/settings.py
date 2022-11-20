@@ -87,13 +87,26 @@ SETTINGS_SECRET = {
 }
 
 
+#### PAR SETTINGS
+'''
+This is the smallest and innermost monitoring domain, whose boundary is closest to the Philippine Islands.
+The exact dimensions of this domain are the area of the Western North Pacific bounded by imaginary lines 
+connecting the coordinates: 5°N 115°E, 15°N 115°E, 21°N 120°E, 25°N 120°E, 25°N 135°E and 5°N 135°E. 
+The western boundary of the PAR is closer to the coastline of the country than the eastern boundary.
+The eastern PAR boundary is several hundred kilometers away from the nearest coastline in the eastern part 
+of the country and completely encloses the East Philippine Sea. Tropical Cyclones inside the PAR warrants the
+issuance of Severe Weather Bulletin, the highest level of warning information issued for tropical cyclones.
+'''
+parBox=[5,115,25,135]
+
+
 start_time = datetime.now()
 
-#ecmwf_remote_directory='20221031060000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-#Active_Typhoon_event_list=['NALGAE']
+ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+Active_Typhoon_event_list=['NALGAE']
 
-ecmwf_remote_directory=None
-Active_Typhoon_event_list=[]
+#ecmwf_remote_directory=None
+#Active_Typhoon_event_list=[]
 High_resoluation_only_Switch=False
 
 
@@ -109,14 +122,16 @@ Show_Areas_on_IBF_radius=400
 Alternative_data_point = (start_time - timedelta(hours=24)).strftime("%Y%m%d")  
 data_point = start_time.strftime("%Y%m%d")      
  
+ 
+ 
 ###################
 ## PATH SETTINGS ##
 ###################
 
 
-MAIN_DIRECTORY='/home/fbf/'
+#MAIN_DIRECTORY='/home/fbf/'
 
-#MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
+MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'

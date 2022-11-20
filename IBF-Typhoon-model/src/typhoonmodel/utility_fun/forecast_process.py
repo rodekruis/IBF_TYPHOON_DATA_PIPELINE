@@ -36,7 +36,6 @@ from typhoonmodel.utility_fun import (
     initialize,
 )
 
-
 if (
     platform == "linux" or platform == "linux2"
 ):  # check if running on linux or windows os
@@ -55,8 +54,7 @@ class Forecast:
         self.db = DatabaseManager(countryCodeISO3, admin_level)
         self.TyphoonName = typhoon_event_name
         self.admin_level = admin_level
-        self.remote_dir = remote_dir
- 
+        self.remote_dir = remote_dir 
         self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
         self.ECMWF_MAX_TRIES = 3
@@ -118,10 +116,8 @@ class Forecast:
         df = df.rename(columns={0: "lat", 1: "lon"})
         df = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.lon, df.lat))
         admin.set_crs(epsg=4326, inplace=True)
-        df.set_crs(epsg=4326, inplace=True)
-        
+        df.set_crs(epsg=4326, inplace=True)        
         self.dfGrids=df
-
         df_admin = sjoin(df, admin, how="left").dropna()
         self.df_admin = df_admin
         self.admin = admin
@@ -143,7 +139,11 @@ class Forecast:
         # Sometimes the ECMWF ftp server complains about too many requests
         # This code allows several retries with some sleep time in between
         
-        
+        ####################################################################
+        ####################################################################
+        ###STEP 1 DOWNLOAD FORECAST DATA
+        ####################################################################
+        ####################################################################
         n_tries = 0
 
         while True:
@@ -166,7 +166,12 @@ class Forecast:
                 time.sleep(self.ECMWF_SLEEP)
                 continue
             break
-
+        
+        ####################################################################
+        ####################################################################
+        ###STEP 2 CHCECK FOR ACTIVE EVENTS IN PAR
+        #####################################################################
+        ####################################################################
         """
         filter data downloaded in the above step for active typhoons  in PAR
         https://bagong.pagasa.dost.gov.ph/learning-tools/philippine-area-of-responsibility
@@ -174,7 +179,8 @@ class Forecast:
         """
         
         FcastData = [tr for tr in fcast.data if (tr.basin =="W - North West Pacific")]
-
+        ## to do replace this wth parBox=[5,115,25,135]
+        
         TropicalCycloneAdvisoryDomain_events = list(
             set(
                 [
@@ -184,8 +190,8 @@ class Forecast:
                         sum(~np.isnan(tr.max_sustained_wind.values))> sum(np.isnan(tr.max_sustained_wind.values)) 
                         and np.nanmin(tr.lat.values) < 21
                         and np.nanmax(tr.lat.values) > 5
-                        and np.nanmin(tr.lon.values) < 130
-                        and np.nanmax(tr.lon.values) > 116
+                        and np.nanmin(tr.lon.values) < 135
+                        and np.nanmax(tr.lon.values) > 115
                         and tr.is_ensemble == "False"
                     )
                 ]
@@ -209,16 +215,8 @@ class Forecast:
 
         self.fcast_data = fcast_data
         
- 
-        
-        #self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
-        #self.ecmwf = FcastData
-        #fcast.data = fcast_data  # [tr for tr in fcast.data if tr.name in Activetyphoon]
 
-        
-              
         if TropicalCycloneAdvisoryDomain_events != []:
-
             try:
                 r=os.path.join(self.rainfall_path, "rain_data.csv")
                 if os.path.isfile(r):
@@ -252,57 +250,52 @@ class Forecast:
                 Active_Typhoon_events=TropicalCycloneAdvisoryDomain_events
      
             for typhoons in Active_Typhoon_events:
-                #
-                logger.info(f"Processing data {typhoons}")
-                    
-                           
+                
+                logger.info(f"Processing data {typhoons}")                   
                 HRS = [ tr  for tr in self.fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
-                
-                eventdata = [ tr  for tr in self.fcast_data  if (tr.name in [typhoons]) ]
-                
-                #if len(HRS) >0:                    
-                #    self.Wind_damage_radius=np.nanmax(HRS[0].max_radius.values)
-                    
+                eventdata = [ tr  for tr in self.fcast_data  if (tr.name in [typhoons]) ]                                
                 self.forecast_time = fcast_data[0].forecast_time.strftime("%Y%m%d%H") 
-                
-                
-                ### run wind field function 
-                
-                #is_land_fall=self.windfieldData(typhoons) 
- 
+
                 if HRS:                    
                     dfff = HRS[0].to_dataframe()  
                     dfff[["VMAX", "LAT", "LON"]] = dfff[["max_sustained_wind", "lat", "lon"]]
                     dfff["YYYYMMDDHH"] = dfff.index.values
                     dfff["YYYYMMDDHH"] = dfff["YYYYMMDDHH"].apply( lambda x: x.strftime("%Y%m%d%H%M")        )
                     dfff["STORMNAME"] = typhoons                    
-                    hrs_df = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]              
-                    logger.info('calculating landfall time')    
-                    landfall_dict=self.landfallTimeCal(hrs_df)  
+                    hrs_df = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]   
+                    hrs_df.dropna(inplace=True)                    
+                    logger.info('1 checking if the storm event will make landfall, and calculating landfall time')   
+                    ################################################
+                    ################################################
+                    ###CHECK FOR LANDFALL 
+                    landfall_dict=self.landfallTimeCal(hrs_df,typhoons)                     
                     is_land_fall=landfall_dict['Made_land_fall']
-                    landfall_time_hour=landfall_dict['landfall_time_hr']    
+                    landfall_time_hour=landfall_dict['landfall_time_hr']
+                    logger.info(f'...finished checking landfall, clculated landfall time;- {landfall_time_hour} ....') 
+                        
                 else:
-                    is_land_fall=-1 
-                    
+                    is_land_fall=-1                     
                 if  is_land_fall in [1,3]:# 1 on track to landfall , 3 will pass next to land                
                     #check if calculated wind fields are empty 
                     logger.info(f'{typhoons}event didnt made landfall yet')
-                    self.Activetyphoon_landfall[typhoons]='notmadelandfall'  
+                    self.Activetyphoon_landfall[typhoons]='notmadelandfall'                     
                     self.Activetyphoon.append(typhoons)
-                    
+                                        
                     wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")
                   
                     if not os.path.isfile(wind_file_path):
-                        #...........for all model run.............                    
-                        self.windfieldDataHRS(typhoons,data=eventdata,MODEL='ECMWF')    
-                        #...........only for HRS model run.............
-                        #is_land_fall=self.windfieldDataHRS(typhoons,data=HRS,MODEL='ECMWF')
-                                    
+                        ################################
+                        ################################
+                        #### CALCULATE WIND FIELD DATA              
+                        self.windfieldDataHRS(typhoons,data=eventdata,landfall_time_hr=landfall_time_hour,MODEL='ECMWF')    
                         logger.info(f'case____{is_land_fall}____finished wind field calculation')   
                         if os.path.isfile(wind_file_path):
                             calcuated_wind_fields=pd.read_csv(wind_file_path)                
                             if not calcuated_wind_fields.empty:
-                                #self.Activetyphoon.append(typhoons)
+                                #######################################
+                                #######################################
+                                ### CALCULATE IMPACT 
+                                #######################################
                                 self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)  
                                 logger.info('go to data upload ')                      
                          
@@ -311,43 +304,15 @@ class Forecast:
                     self.Activetyphoon_landfall[typhoons]='madelandfall'
                     self.Activetyphoon.append(typhoons)    
                                     
-                elif is_land_fall in [-1,10,30,6]:
-                    logger.info(f'there is an active event {typhoons} but far from land ')
+                else: #[-1,10,30,6]
+                    logger.info(f'no active event in PAR')
                     self.Activetyphoon_landfall[typhoons]='noEvent'
-                '''
-                elif is_land_fall in [4]:
-                    logger.info(f'there is an active event {typhoons} but far from land ')
-                    self.Activetyphoon_landfall[typhoons]='Farfromland'               
                     
-                wind_file_path=os.path.join(self.Input_folder, f"{typhoons}_windfield.csv")
-                  
-                if not os.path.isfile(wind_file_path):
-                    #...........for all model run.............                    
-                    self.windfieldDataHRS(typhoons,data=eventdata,MODEL='ECMWF')    
-                    #...........only for HRS model run.............
-                    #is_land_fall=self.windfieldDataHRS(typhoons,data=HRS,MODEL='ECMWF')
-                                
-                    logger.info(f'case____{is_land_fall}____finished wind field calculation')           
-                
-                logger.info('finished wind field calculation')        
-                if os.path.isfile(wind_file_path):
-                    calcuated_wind_fields=pd.read_csv(wind_file_path)                
-                    if not calcuated_wind_fields.empty:
-                        #self.Activetyphoon.append(typhoons)
-                        self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)  
-                        logger.info('go to data upload ')                          
- 
-                        forecast_directory=typhoons+fcast_data[0].forecast_time.strftime("%Y%m%d%H%M") 
-                        try:
-                            logger.info('upload result to datalake')                          
-                            self.db.postDataToDatalake(datalakefolder=forecast_directory)
-                        except:
-                            logger.info('failed to upload result to datalake')   
-                            pass
-                   
-
-                logger.info(f'go to data upload {self.Activetyphoon_landfall}')   
-                '''     
+                    
+                    
+                    
+                    
+    #########################################   
     def min_distance(self,point, lines):
         return lines.distance(point).min()
 
@@ -596,15 +561,15 @@ class Forecast:
         km = 6367 * c
         return km
     
-    def landfallTimeCal(self,track_df):
+    def landfallTimeCal(self,track_df,typhoons):
         '''
         the function will return cases discribing landfall 
         # -1 NO ACTIVE EVENTS # no event upload
         # 1 ON TRACK TO LANDFALL 
         # 10 ON TRACK TO LANDFALL but far 
-        # 2 ALREADY MADE LANDFALL IN THE PAST #upload from datalack
+        # 2 ALREADY MADE LANDFALL EVENT IN THE PAST #upload from datalack
         # 3 WILL PASS NEXT TO LAND 
-        # 30 WILL PASS NEXT TO LAND but still very far
+        # 30 WILL PASS NEXT TO LAND but  far
         # 5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND #upload track +0 values
         # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT #no event upload
         
@@ -613,36 +578,65 @@ class Forecast:
         #Made_land_fall=-1
         #landfall_time_hr='72-hour'
         
+        track_df.dropna(inplace=True) 
         if not track_df.empty:
-            land=[]
             admin1=self.admin.copy()
-            admin1=admin1.buffer(0)        
+            admin1=admin1.buffer(0) 
+             
+ 
+            track_df["VMAX"] = track_df["VMAX"]/ 0.88  # convert 10min average to 1min average            
             hrs_track_df_=track_df.copy() 
+            
+            max_longtiude=np.nanmax(hrs_track_df_.LON.values)   
+            is_onland='land'  
                    
             hrs_track_df_['geometry'] = [Point(xy) for xy in zip(hrs_track_df_.LON, hrs_track_df_.LAT)]         
             hrs_track_df_["time"] = pd.to_datetime(hrs_track_df_["YYYYMMDDHH"], format="%Y%m%d%H%M").dt.strftime("%Y-%m-%d %H:%M:%S")
-            forecast_time = str(hrs_track_df_['time'][0])
-            forecast_time = datetime.strptime(forecast_time, "%Y-%m-%d %H:%M:%S")    
-                          
-            for row, data in hrs_track_df_.iterrows():
-                p1 = data["geometry"]
-                if any(list(set(admin1.contains(p1)))) == True:
-                    land.append("land")
-                else:
-                    land.append("water") 
-                    
-            max_longtiude=np.nanmax(hrs_track_df_.LON.values)     
-            hrs_track_df_['location']=land        
-            is_onland='land'  
-            hrs_track_df_2=hrs_track_df_.query('location==@is_onland')        
-            point_inland_list=hrs_track_df_2['time'].values  
             
-            if len(point_inland_list)>0:
-                Made_land_fall=1 # 1 ON TRACK TO LANDFALL  
-                landfalltime=min(point_inland_list)
-                landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y-%m-%d %H:%M:%S")
+            hrs_track_df_["HH"] = pd.to_datetime(hrs_track_df_["YYYYMMDDHH"], format="%Y%m%d%H%M").dt.strftime("%H:%M")
+            
+            forecast_time = str(hrs_track_df_['time'][0])
+            forecast_time = datetime.strptime(forecast_time, "%Y-%m-%d %H:%M:%S")  
+            timeHolder= datetime.strptime(hrs_track_df_['time'].values[-1], "%Y-%m-%d %H:%M:%S")  
+            hrs_track_df_['firstPointOnLand']=False
+            hrs_track_df_['onLand']='water'
+            admin20=self.admin4.copy() 
+                          
+            for i, data in hrs_track_df_.iterrows():
+                p1 = data["geometry"]
+                admin20['dist']=admin20.apply(lambda x: self.Calculate_dis(x.LON,x.LAT,data.LON,data.LAT),axis=1)
+    
+                min_dist=np.nanmin(admin20['dist'].values)
+                hrs_track_df_.at[i,'distanceLand'] = min_dist
+                
+                df_closest=admin20[admin20.dist == admin20.dist.min()]
+    
+                Man_Barg=df_closest['_NAME_Subm'].values[0] +' '+ df_closest['NAME_bar'].values[0]
+                hrs_track_df_.at[i,'closestMancipality'] = Man_Barg
+    
+    
+                if any(list(set(admin1.contains(p1)))) == True:
+ 
+                    hrs_track_df_.at[i,'onLand'] = 'land'
+                    timeStamp=datetime.strptime(data['time'], "%Y-%m-%d %H:%M:%S")    	
+                    if timeHolder > timeStamp:
+                        timeHolder=timeStamp
+                        hrs_track_df_.at[i,'firstPointOnLand'] = True 
+
+            dfClosestPoint=hrs_track_df_[hrs_track_df_.distanceLand == hrs_track_df_.distanceLand.min()]
+            calculatedminDistanceToCost=hrs_track_df_.distanceLand.min()            
+            
+            hrs_track_df_['firstLandfall']=False
+            
+            ###############################################
+            ### calculate lead time 
+            ###############################################
+            
+            if any(hrs_track_df_.firstPointOnLand.values):
+                Made_land_fall=1 # 1 ON TRACK TO LANDFALL
+                landfalltime=hrs_track_df_[hrs_track_df_.firstPointOnLand == True]['time'].values[0]
+                landfalltime_time_obj = datetime.strptime(landfalltime, "%Y-%m-%d %H:%M:%S")
                 landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
-        
                 seconds = landfall_dellta.total_seconds()
                 hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
 
@@ -655,142 +649,69 @@ class Forecast:
                 
                 landfall_time_hr = str(hours) + "-hour"
                 
+                for i, data in hrs_track_df_.iterrows():
+                    if data.firstPointOnLand == True:
+                        hrs_track_df_.at[i,'firstLandfall'] = True 
+                        hrs_track_df_.at[i,'HH'] = '00:00'               
+               
+            elif calculatedminDistanceToCost < self.maxDistanceFromCoast:
+                Made_land_fall=3 # 3 WILL PASS NEXT TO LAND 
+                df_closest=hrs_track_df_[hrs_track_df_.distanceLand == hrs_track_df_.distanceLand.min()]
+                landfalltime=df_closest['time'].values[0]
+                landfalltime_time_obj = datetime.strptime(landfalltime, "%Y-%m-%d %H:%M:%S")
+                landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
+                seconds = landfall_dellta.total_seconds()
+                hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
+
+                if (hours < 0 or max_longtiude < self.longtiude_limit_leadtime):
+                    hours=0
+                    Made_land_fall=5 # 5 ALREADY passed next to land IN THE PAST
+                elif hours >168 :
+                    #hours = 168
+                    Made_land_fall=6 ## 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT 
+                
+                landfall_time_hr = str(hours) + "-hour"
+                
+                ### if we want to add point clos to land 
+                '''
+                for i, data in hrs_track_df_.iterrows():
+                    if data.distanceLand == calculatedminDistanceToCost:
+                        hrs_track_df_.at[i,'firstLandfall'] = True
+                        hrs_track_df_.at[i,'HH'] = '00:00' 
+                '''
             else:
-                landfalltime=None        
-                admin1=self.admin4.copy()
-                dmin=self.maxDistanceFromCoast
-                for row, data in hrs_track_df_.iterrows():
-                    admin1['dist']=admin1.apply(lambda x: self.Calculate_dis(x.LON,x.LAT,data.LON,data.LAT),axis=1)
-                    time_stamp=data.YYYYMMDDHH
-                    
-                    min_dist=np.nanmin(admin1['dist'].values)
-                    
-                    if min_dist < dmin:
-                        dmin= min_dist
-                        landfalltime=time_stamp
-                        
-                if landfalltime:
-                    Made_land_fall=3 # 3 WILL PASS NEXT TO LAND 
-                    landfalltime_time_obj = datetime.strptime(str(landfalltime), "%Y%m%d%H%M")
-                    landfall_dellta = landfalltime_time_obj - forecast_time  # .strftime("%Y%m%d")
-        
-                        
-                    seconds = landfall_dellta.total_seconds()
-                    hours = int(seconds // 3600)- self.ECMWF_LATENCY_LEADTIME_CORRECTION
-                    if (hours < 0  or max_longtiude < self.longtiude_limit_leadtime):
-                        hours=0
-                        Made_land_fall=5  # 5 ALREADY PASSED NEXT TO THE CLOSEST POINT TO LAND 
-                    elif hours > 168 :
-                        #hours=168                         
-                        Made_land_fall=30  #  will pass far 
-                    landfall_time_hr = str(hours) + "-hour"
-                else:
-                    landfall_time_hr = "72-hour"  
-                    Made_land_fall=6 # 6 EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT 
-
-                    
-        landfall_dict={
-            'Made_land_fall':Made_land_fall,
-            'landfall_time_hr':landfall_time_hr
-                    }
-        
-        return landfall_dict     
-
-    def windfieldData(self, typhoons):
-        '''
-        calculate windfield per grid 
-        
-        '''
-
-        
-        tr_HRS = [
-            tr
-            for tr in self.fcast_data
-            if (tr.is_ensemble == "False" and tr.name == typhoons)
-        ]
-        
-        fcast_data_typ = [ tr  for tr in self.fcast_data  if (tr.name in [typhoons]) ]
-
-        track1 = TCTracks()
-        track1.data = tr_HRS
-        try:
-            logger.info("High res member: creating intensity plot")
-            fig, ax = plt.subplots(
-                figsize=(12, 8), subplot_kw=dict(projection=ccrs.PlateCarree())
-            )
-            track1.plot(axis=ax)
-            output_filename = os.path.join(Output_folder, f"track_{typhoons}")
-            fig.savefig(output_filename)
-        except:
-            logger.info(f"incomplete track data ")
-
-        if tr_HRS != []:
-            HRS_SPEED = (
-                tr_HRS[0].max_sustained_wind.values / 0.88
-            ).tolist()  ############# 0.84 is conversion factor for ECMWF 10MIN TO 1MIN AVERAGE
+                Made_land_fall=60 #EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT (No event scenario)
+                landfall_time_hr='168-hour' 
+                
             
-            dfff = tr_HRS[0].to_dataframe()
-            dfff[["VMAX", "LAT", "LON"]] = dfff[["max_sustained_wind", "lat", "lon"]]
-            dfff["YYYYMMDDHH"] = dfff.index.values
-            dfff["YYYYMMDDHH"] = dfff["YYYYMMDDHH"].apply(
-                lambda x: x.strftime("%Y%m%d%H%M")
-            )
-            dfff["STORMNAME"] = typhoons
-            dfff["VMAX"] = dfff["VMAX"]/ 0.88
+            if Made_land_fall in [1,2,3,5]:
+                typhoon_tracks=hrs_track_df_[["YYYYMMDDHH",
+                                            "VMAX",
+                                            'firstLandfall',
+                                            'closestMancipality',
+                                            'distanceLand',
+                                            "LAT",
+                                            "LON",
+                                            'HH',
+                                            "STORMNAME"]] 
+                
+                typhoon_tracks["timestampOfTrackpoint"] = pd.to_datetime(
+                    typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
+                ).dt.strftime("%m-%d-%Y %H:%M:%S")
+                
+                typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_track.csv"),index=False)
+                typhoon_tracks.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
             
-            hrs_track_data = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
-            
-            hrs_track_df=hrs_track_data.copy()#.query('5 < LAT < 20 and 115 < LON < 133')
-            
-            hrs_track_df.reset_index(inplace=True) 
-            self.hrs_track_data[typhoons] = hrs_track_data
-            
-            typhoon_tracks=dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
-            typhoon_tracks["timestampOfTrackpoint"] = pd.to_datetime(
-                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
-            ).dt.strftime("%m-%d-%Y %H:%M:%S")
-            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_full_hrs_track.csv"),index=False) 
-            typhoon_tracks["HH"] = pd.to_datetime(
-                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
-            ).dt.strftime("%H:%M")
-            
-            time_steps=['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']
-            typhoon_tracks=typhoon_tracks.query('HH in @time_steps')
-            #typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),index=False) 
-            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_track.csv"),index=False) 
-            typhoon_tracks.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
-            
-            wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]
-            wind_tracks_hrs.dropna(inplace=True)
-            
-            wind_tracks_hrs = wind_tracks_hrs.round(2)
-
-            # Adjust track time step
-            #data_forced = [  tr.where(tr.time <= max(tr_HRS[0].time.values), drop=True) for tr in fcast_data_typ      ]
-            data_forced=fcast_data_typ.copy()
-
-            hrs_track_df = hrs_track_data.copy()    
-            
-            logger.info('calculating landfall time')
-            
-                        
-            landfall_dict=self.landfallTimeCal(hrs_track_df)
-            
-            Made_land_fall=landfall_dict['Made_land_fall']
-            
-            landfall_time_hr=landfall_dict['landfall_time_hr']   
-            logger.info(f'..................landfall time{landfall_time_hr}................') 
-            
-           
-        
-            if not wind_tracks_hrs.empty:    
+                
+                wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX","firstLandfall"]]
+                wind_tracks_hrs.dropna(inplace=True)
+                
+                wind_tracks_hrs = wind_tracks_hrs.round(2)
                 wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
                 bins = [0,62,88, 117, 185, np.inf]
                 catagories = ['TD', 'TS', 'STS', 'TY', 'STY']
-
                 wind_tracks_hrs['catagories'] = pd.cut(wind_tracks_hrs['KPH'], bins, labels=catagories)
                 exposure_place_codes=[]
-                
                 for ix, row in wind_tracks_hrs.iterrows():
                     if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']:                        
                         exposure_entry = {
@@ -799,6 +720,7 @@ class Forecast:
                             "windspeed":int(row["KPH"]),
                             "category":row["catagories"],
                             "timestampOfTrackpoint": row["timestampOfTrackpoint"],
+                            "firstLandfall":row["firstLandfall"],
                         }
                         exposure_place_codes.append(exposure_entry)
 
@@ -810,191 +732,17 @@ class Forecast:
                     "eventName": typhoons,
                     "trackpointDetails": exposure_place_codes,
                 }
-
-                with open(json_file_path, "w") as fp:
-                    json.dump(track_records, fp)
-                       
-
-            # calculate wind field for each ensamble members      
+            with open(json_file_path, "w") as fp:
+                json.dump(track_records, fp)
                 
-            if data_forced: # and MIN_DIST_TO_COAST <200000:#in meters            
-                tracks = TCTracks()
-                tracks.data =data_forced # 
-                #tracks.equal_timestep(0.5)
-                TYphoon = TropCyclone()
-                TYphoon.set_from_tracks(tracks, self.cent, store_windfields=True,metric="geosphere")            
-                windfield=TYphoon.windfields
-                threshold =self.WIND_SPEED_THRESHOLD# 20
-                list_intensity = []
-                distan_track = []
-                
-                for i in range(len(data_forced)):
-                    logger.info(f'finished calculating wind data for {i}')  
-                    nsteps = windfield[i].shape[0]
-                    tr=tracks.data[i]
-                    centroid_id = np.tile(self.centroid_idx, nsteps)
-                    intensity_3d = windfield[i].toarray().reshape(nsteps,  self.ncents, 2)
-                    intensity = np.linalg.norm(intensity_3d, axis=-1).ravel()
-                    timesteps = np.repeat(tracks.data[i].time.values, self.ncents)
-                    timesteps = timesteps.reshape((nsteps,  self.ncents)).ravel()
-                    inten_tr = pd.DataFrame({
-                            'centroid_id': centroid_id,
-                            'value': intensity,
-                            'timestamp': timesteps,})
-                    inten_tr = inten_tr[inten_tr.value > self.WIND_SPEED_THRESHOLD]
-                    inten_tr['storm_id'] = tr.sid
-                    inten_tr['name'] = tr.name
-                    inten_tr = (pd.merge(inten_tr,  self.df_admin, how='outer', on='centroid_id')
-                                .dropna()
-                                .groupby(['adm3_pcode'], as_index=False)
-                                .agg({"value": ['count', 'max']}))
-                    inten_tr.columns = [x for x in ['adm3_pcode', 'value_count', 'v_max']]
-                    inten_tr['storm_id'] = tr.sid
-                    inten_tr['name'] = tr.name
-                    inten_tr['forecast_time']=tr.forecast_time
-                    #inten_tr['lead_time']=lead_time1
-                    inten_tr["ens_id"] = tr.sid + "_" + str(tr.ensemble_number)
-                    inten_tr['is_ensamble'] = tr.is_ensemble
-                    list_intensity.append(inten_tr)
-                    distan_track1=[]
-                    for index, row in self.dfGrids.iterrows():
-                        dist=np.min(np.sqrt(np.square(tr.lat.values-row['lat'])+np.square(tr.lon.values-row['lon'])))
-                        distan_track1.append(dist*111)
-                    dist_tr = pd.DataFrame({'centroid_id': self.centroid_idx,'value': distan_track1})
-                    dist_tr = (pd.merge(dist_tr, self.df_admin, how='outer', on='centroid_id')
-                                .dropna()
-                                .groupby(['adm3_pcode'], as_index=False)
-                                .agg({'value': 'min'}))
-                    dist_tr.columns = [x for x in ['adm3_pcode', 'dis_track_min']]  # join_left_df_.columns.ravel()]
-                    dist_tr['storm_id'] = tr.sid	
-                    distan_track.append(dist_tr)
-                    
-                df_intensity_ = pd.concat(list_intensity)
-                distan_track_f = pd.concat(distan_track)
-                typhhon_df =  pd.merge(df_intensity_, distan_track_f,  how='left', on=['adm3_pcode','storm_id'])
-                
-                '''
-                distan_track_f.to_csv(
-                        os.path.join(self.Input_folder, f"{typhoons}_trackdata.csv"),
-                        index=False)
-                df_intensity_.to_csv(
-                        os.path.join(self.Input_folder, f"{typhoons}_intensityata.csv"),
-                        index=False)
-                '''
-                if not typhhon_df.empty: #if len(typhhon_df.index > 1):
-                    typhhon_df.rename(
-                        columns={"v_max": "HAZ_v_max", "dis_track_min": "HAZ_dis_track_min"},
-                        inplace=True,
-                    )
-                    typhhon_wind_data = typhhon_df
-                    typhhon_df['lead_time_hr']=landfall_time_hr
-                    #Activetyphoon.append(typhoons)
-                    
-                    typhhon_df.to_csv(
-                        os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),
-                        index=False)
-                    
-                    probability_dist=typhhon_df.groupby('adm3_pcode').agg(dist50k=('HAZ_dis_track_min', 'sum'),
-                                                                        windspeed=('HAZ_v_max', 'mean'), 
-                                                                        Num_ens=('HAZ_dis_track_min', 'count')).reset_index()
-                    probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1) 
-                    
-                    df_total_upload = pd.merge(self.pcode,
-                                        probability_dist.filter(["adm3_pcode", "prob_within_50km","aver_dis"]),
-                                        how="left",
-                                        left_on="adm3_pcode",
-                                        right_on="adm3_pcode"
-                                        )
-                    df_wind=df_total_upload.copy()
-                    df_wind.fillna(0, inplace=True)                
-                    df_wind.astype({"windspeed": "int32"})
-                
-                            # windspeed
-                    layer='windspeed'
-                    #df_wind=typhhon_df.copy()
-              
-
-                    exposure_data = {"countryCodeISO3": "PHL"}
-                    exposure_place_codes = []
-                    #### change the data frame here to include impact
-                    for ix, row in df_wind.iterrows():
-                        exposure_entry = {"placeCode": row["adm3_pcode"], "amount": int(row[layer])}
-                        exposure_place_codes.append(exposure_entry)
-
-                    exposure_data["exposurePlaceCodes"] = exposure_place_codes
-                    exposure_data["adminLevel"] = self.admin_level
-                    exposure_data["leadTime"] = landfall_time_hr
-                    exposure_data["dynamicIndicator"] = layer
-                    exposure_data["disasterType"] = "typhoon"
-                    exposure_data["eventName"] = typhoons
-
-                    json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
-
-                    with open(json_file_path, "w") as fp:
-                        json.dump(exposure_data, fp)       
-               
-                elif Made_land_fall in [1,3]:# and len(typhhon_df.index < 1):
-                    #Made_land_fall=2
-                    
-                    
-                    
-                    distan_track_f["dist_50"] = distan_track_f["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
-                    probability_dist=distan_track_f.groupby('adm3_pcode').agg(
-                                    dist50k=('dist_50', 'sum'),
-                                    aver_dis=('dist_50', 'mean'),
-                                    Num_ens=('dist_50', 'count')).reset_index()
-                    
-                    probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1)
-                    
-                    
-                    
+        landfall_dict={
+            'Made_land_fall':Made_land_fall,
+            'landfall_time_hr':landfall_time_hr
+                    }
         
-                    df_total_upload = pd.merge(self.pcode,
-                                     probability_dist.filter(["adm3_pcode", "prob_within_50km","aver_dis"]),
-                                     how="left",
-                                     left_on="adm3_pcode",
-                                     right_on="adm3_pcode"
-                                     )
-                    
-                    df_total_upload['prob_within_50km'] =  df_total_upload['prob_within_50km'].fillna('0')
-                    
-                    df_total_upload['alert_threshold']=0
-                    df_total_upload['affected_population']=0   
-                    df_total_upload['windspeed']=0 
-                    df_total_upload['houses_affected']=0
-                    
-                    df_total_upload['show_admin_area']=df_total_upload["aver_dis"].apply(lambda x: 1 if x < 1000 else 0)
-                    
-                    df_total_upload['rainfall']=0
-                     
+        return landfall_dict     
 
-                                  
-                    for layer in ["affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
-                        exposure_entry=[]
-                        # prepare layer
-                        logger.info(f"preparing data for {layer}")
-                        #exposure_data = {'countryCodeISO3': countrycode}
-                        exposure_data = {"countryCodeISO3": "PHL"}
-                        exposure_place_codes = []
-                        #### change the data frame here to include impact
-                        for ix, row in df_total_upload.iterrows():
-                            exposure_entry = {"placeCode": row["adm3_pcode"],
-                                            "amount": row[layer]}
-                            exposure_place_codes.append(exposure_entry)
-                            
-                        exposure_data["exposurePlaceCodes"] = exposure_place_codes
-                        exposure_data["adminLevel"] = self.admin_level
-                        exposure_data["leadTime"] = landfall_time_hr
-                        exposure_data["dynamicIndicator"] = layer
-                        exposure_data["disasterType"] = "typhoon"
-                        exposure_data["eventName"] = typhoons                     
-                        json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
-                        
-                        with open(json_file_path, 'w') as fp:
-                            json.dump(exposure_data, fp)
-
-        logger.info(f'finshed wind calculation') 
-        return Made_land_fall
+    
     
     
     def impact_model(self, typhoon_names,wind_data):
@@ -1571,7 +1319,7 @@ class Forecast:
 
         
         
-    def windfieldDataHRS(self, typhoons,data,MODEL='HWRF'):
+    def windfieldDataHRS(self, typhoons,data,landfall_time_hr,MODEL='HWRF'):
         
         data_forced=data.copy()  # 
         tracks = TCTracks()
@@ -1601,10 +1349,10 @@ class Forecast:
         
         logger.info('calculating landfall time')     
                     
-        landfall_dict=self.landfallTimeCal(hrs_track_df)        
+        #landfall_dict=self.landfallTimeCal(hrs_track_df)        
         
-        Made_land_fall=landfall_dict['Made_land_fall']        
-        landfall_time_hr=landfall_dict['landfall_time_hr']
+        #Made_land_fall=landfall_dict['Made_land_fall']        
+        #landfall_time_hr=landfall_dict['landfall_time_hr']
         
         
                       
@@ -1630,7 +1378,7 @@ class Forecast:
         wind_tracks_hrs = wind_tracks_hrs.round(2)
         
 
-        
+        '''
         if not wind_tracks_hrs.empty:    
             wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
             bins = [0,62,88, 117, 185, np.inf]
@@ -1661,7 +1409,7 @@ class Forecast:
 
             with open(json_file_path, "w") as fp:
                 json.dump(track_records, fp)
-                    
+        '''                    
 
         # calculate wind field for each ensamble members      
         list_intensity = []
@@ -1771,10 +1519,9 @@ class Forecast:
                 with open(json_file_path, "w") as fp:
                     json.dump(exposure_data, fp)       
         
-        elif Made_land_fall in [1,3] and len(typhhon_df.index < 1):
-
-            distan_track_f["dist_50"] = distan_track_f["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
-            probability_dist=distan_track_f.groupby('adm3_pcode').agg(
+        elif not distan_track_f2.empty:
+            distan_track_f2["dist_50"] = distan_track_f2["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+            probability_dist=distan_track_f2.groupby('adm3_pcode').agg(
                             dist50k=('dist_50', 'sum'),
                             aver_dis=('dist_50', 'mean'),
                             Num_ens=('dist_50', 'count')).reset_index()
@@ -1820,7 +1567,338 @@ class Forecast:
                 
                 with open(json_file_path, 'w') as fp:
                     json.dump(exposure_data, fp)
+        else:            
+            df_total_upload = self.pcode.cop()            
+            df_total_upload['alert_threshold']=0
+            df_total_upload['prob_within_50km']=0 
+            df_total_upload['affected_population']=0   
+            df_total_upload['windspeed']=0 
+            df_total_upload['houses_affected']=0            
+            df_total_upload['show_admin_area']=1                
+            df_total_upload['rainfall']=0                    
 
-        logger.info('finshed wind calculation') 
+            for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
+                exposure_entry=[]
+                # prepare layer
+                logger.info(f"preparing data for {layer}")
+                #exposure_data = {'countryCodeISO3': countrycode}
+                exposure_data = {"countryCodeISO3": "PHL"}
+                exposure_place_codes = []
+                #### change the data frame here to include impact
+                for ix, row in df_total_upload.iterrows():
+                    exposure_entry = {"placeCode": row["adm3_pcode"],
+                                    "amount": row[layer]}
+                    exposure_place_codes.append(exposure_entry)
+                    
+                exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                exposure_data["adminLevel"] = self.admin_level
+                exposure_data["leadTime"] = landfall_time_hr
+                exposure_data["dynamicIndicator"] = layer
+                exposure_data["disasterType"] = "typhoon"
+                exposure_data["eventName"] = typhoons                     
+                json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
+                
+                with open(json_file_path, 'w') as fp:
+                    json.dump(exposure_data, fp)
+                logger.info('finshed wind calculation')
+                
+                
+    def windfieldData(self, typhoons):
+        '''
+        calculate windfield per grid 
+        
+        '''
 
-        return Made_land_fall
+        
+        tr_HRS = [
+            tr
+            for tr in self.fcast_data
+            if (tr.is_ensemble == "False" and tr.name == typhoons)
+        ]
+        
+        fcast_data_typ = [ tr  for tr in self.fcast_data  if (tr.name in [typhoons]) ]
+
+        track1 = TCTracks()
+        track1.data = tr_HRS
+        try:
+            logger.info("High res member: creating intensity plot")
+            fig, ax = plt.subplots(
+                figsize=(12, 8), subplot_kw=dict(projection=ccrs.PlateCarree())
+            )
+            track1.plot(axis=ax)
+            output_filename = os.path.join(Output_folder, f"track_{typhoons}")
+            fig.savefig(output_filename)
+        except:
+            logger.info(f"incomplete track data ")
+
+        if tr_HRS != []:
+            HRS_SPEED = (
+                tr_HRS[0].max_sustained_wind.values / 0.88
+            ).tolist()  ############# 0.84 is conversion factor for ECMWF 10MIN TO 1MIN AVERAGE
+            
+            dfff = tr_HRS[0].to_dataframe()
+            dfff[["VMAX", "LAT", "LON"]] = dfff[["max_sustained_wind", "lat", "lon"]]
+            dfff["YYYYMMDDHH"] = dfff.index.values
+            dfff["YYYYMMDDHH"] = dfff["YYYYMMDDHH"].apply(
+                lambda x: x.strftime("%Y%m%d%H%M")
+            )
+            dfff["STORMNAME"] = typhoons
+            dfff["VMAX"] = dfff["VMAX"]/ 0.88
+            
+            hrs_track_data = dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
+            
+            hrs_track_df=hrs_track_data.copy()#.query('5 < LAT < 20 and 115 < LON < 133')
+            
+            hrs_track_df.reset_index(inplace=True) 
+            self.hrs_track_data[typhoons] = hrs_track_data
+            
+            typhoon_tracks=dfff[["YYYYMMDDHH", "VMAX", "LAT", "LON", "STORMNAME"]]
+            typhoon_tracks["timestampOfTrackpoint"] = pd.to_datetime(
+                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
+            ).dt.strftime("%m-%d-%Y %H:%M:%S")
+            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_full_hrs_track.csv"),index=False) 
+            typhoon_tracks["HH"] = pd.to_datetime(
+                typhoon_tracks["YYYYMMDDHH"], format="%Y%m%d%H%M"
+            ).dt.strftime("%H:%M")
+            
+            time_steps=['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']
+            typhoon_tracks=typhoon_tracks.query('HH in @time_steps')
+            #typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_ecmwf_hrs_track.csv"),index=False) 
+            typhoon_tracks.to_csv(os.path.join(self.Input_folder, f"{typhoons}_track.csv"),index=False) 
+            typhoon_tracks.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
+            
+            wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]
+            wind_tracks_hrs.dropna(inplace=True)
+            
+            wind_tracks_hrs = wind_tracks_hrs.round(2)
+
+            # Adjust track time step
+            #data_forced = [  tr.where(tr.time <= max(tr_HRS[0].time.values), drop=True) for tr in fcast_data_typ      ]
+            data_forced=fcast_data_typ.copy()
+
+            hrs_track_df = hrs_track_data.copy()    
+            
+            logger.info('calculating landfall time')
+            
+                        
+            landfall_dict=self.landfallTimeCal(hrs_track_df,typhoons)
+            
+            Made_land_fall=landfall_dict['Made_land_fall']
+            
+            landfall_time_hr=landfall_dict['landfall_time_hr']   
+            logger.info(f'..................landfall time{landfall_time_hr}................') 
+            
+           
+        
+            if not wind_tracks_hrs.empty:    
+                wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
+                bins = [0,62,88, 117, 185, np.inf]
+                catagories = ['TD', 'TS', 'STS', 'TY', 'STY']
+
+                wind_tracks_hrs['catagories'] = pd.cut(wind_tracks_hrs['KPH'], bins, labels=catagories)
+                exposure_place_codes=[]
+                
+                for ix, row in wind_tracks_hrs.iterrows():
+                    if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']:                        
+                        exposure_entry = {
+                            "lat": row["lat"],
+                            "lon": row["lon"],
+                            "windspeed":int(row["KPH"]),
+                            "category":row["catagories"],
+                            "timestampOfTrackpoint": row["timestampOfTrackpoint"],
+                        }
+                        exposure_place_codes.append(exposure_entry)
+
+                json_file_path = self.Output_folder + typhoons + "_tracks" + ".json"
+                
+                track_records = {
+                    "countryCodeISO3": "PHL",
+                    "leadTime": landfall_time_hr,
+                    "eventName": typhoons,
+                    "trackpointDetails": exposure_place_codes,
+                }
+
+                with open(json_file_path, "w") as fp:
+                    json.dump(track_records, fp)
+                       
+
+            # calculate wind field for each ensamble members      
+                
+            if data_forced: # and MIN_DIST_TO_COAST <200000:#in meters            
+                tracks = TCTracks()
+                tracks.data =data_forced # 
+                #tracks.equal_timestep(0.5)
+                TYphoon = TropCyclone()
+                TYphoon.set_from_tracks(tracks, self.cent, store_windfields=True,metric="geosphere")            
+                windfield=TYphoon.windfields
+                threshold =self.WIND_SPEED_THRESHOLD# 20
+                list_intensity = []
+                distan_track = []
+                
+                for i in range(len(data_forced)):
+                    logger.info(f'finished calculating wind data for {i}')  
+                    nsteps = windfield[i].shape[0]
+                    tr=tracks.data[i]
+                    centroid_id = np.tile(self.centroid_idx, nsteps)
+                    intensity_3d = windfield[i].toarray().reshape(nsteps,  self.ncents, 2)
+                    intensity = np.linalg.norm(intensity_3d, axis=-1).ravel()
+                    timesteps = np.repeat(tracks.data[i].time.values, self.ncents)
+                    timesteps = timesteps.reshape((nsteps,  self.ncents)).ravel()
+                    inten_tr = pd.DataFrame({
+                            'centroid_id': centroid_id,
+                            'value': intensity,
+                            'timestamp': timesteps,})
+                    inten_tr = inten_tr[inten_tr.value > self.WIND_SPEED_THRESHOLD]
+                    inten_tr['storm_id'] = tr.sid
+                    inten_tr['name'] = tr.name
+                    inten_tr = (pd.merge(inten_tr,  self.df_admin, how='outer', on='centroid_id')
+                                .dropna()
+                                .groupby(['adm3_pcode'], as_index=False)
+                                .agg({"value": ['count', 'max']}))
+                    inten_tr.columns = [x for x in ['adm3_pcode', 'value_count', 'v_max']]
+                    inten_tr['storm_id'] = tr.sid
+                    inten_tr['name'] = tr.name
+                    inten_tr['forecast_time']=tr.forecast_time
+                    #inten_tr['lead_time']=lead_time1
+                    inten_tr["ens_id"] = tr.sid + "_" + str(tr.ensemble_number)
+                    inten_tr['is_ensamble'] = tr.is_ensemble
+                    list_intensity.append(inten_tr)
+                    distan_track1=[]
+                    for index, row in self.dfGrids.iterrows():
+                        dist=np.min(np.sqrt(np.square(tr.lat.values-row['lat'])+np.square(tr.lon.values-row['lon'])))
+                        distan_track1.append(dist*111)
+                    dist_tr = pd.DataFrame({'centroid_id': self.centroid_idx,'value': distan_track1})
+                    dist_tr = (pd.merge(dist_tr, self.df_admin, how='outer', on='centroid_id')
+                                .dropna()
+                                .groupby(['adm3_pcode'], as_index=False)
+                                .agg({'value': 'min'}))
+                    dist_tr.columns = [x for x in ['adm3_pcode', 'dis_track_min']]  # join_left_df_.columns.ravel()]
+                    dist_tr['storm_id'] = tr.sid	
+                    distan_track.append(dist_tr)
+                    
+                df_intensity_ = pd.concat(list_intensity)
+                distan_track_f = pd.concat(distan_track)
+                typhhon_df =  pd.merge(df_intensity_, distan_track_f,  how='left', on=['adm3_pcode','storm_id'])
+                
+                '''
+                distan_track_f.to_csv(
+                        os.path.join(self.Input_folder, f"{typhoons}_trackdata.csv"),
+                        index=False)
+                df_intensity_.to_csv(
+                        os.path.join(self.Input_folder, f"{typhoons}_intensityata.csv"),
+                        index=False)
+                '''
+                if not typhhon_df.empty: #if len(typhhon_df.index > 1):
+                    typhhon_df.rename(
+                        columns={"v_max": "HAZ_v_max", "dis_track_min": "HAZ_dis_track_min"},
+                        inplace=True,
+                    )
+                    typhhon_wind_data = typhhon_df
+                    typhhon_df['lead_time_hr']=landfall_time_hr
+                    #Activetyphoon.append(typhoons)
+                    
+                    typhhon_df.to_csv(
+                        os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),
+                        index=False)
+                    
+                    probability_dist=typhhon_df.groupby('adm3_pcode').agg(dist50k=('HAZ_dis_track_min', 'sum'),
+                                                                        windspeed=('HAZ_v_max', 'mean'), 
+                                                                        Num_ens=('HAZ_dis_track_min', 'count')).reset_index()
+                    probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1) 
+                    
+                    df_total_upload = pd.merge(self.pcode,
+                                        probability_dist.filter(["adm3_pcode", "prob_within_50km","aver_dis"]),
+                                        how="left",
+                                        left_on="adm3_pcode",
+                                        right_on="adm3_pcode"
+                                        )
+                    df_wind=df_total_upload.copy()
+                    df_wind.fillna(0, inplace=True)                
+                    df_wind.astype({"windspeed": "int32"})
+                
+                            # windspeed
+                    layer='windspeed'
+                    #df_wind=typhhon_df.copy()
+              
+
+                    exposure_data = {"countryCodeISO3": "PHL"}
+                    exposure_place_codes = []
+                    #### change the data frame here to include impact
+                    for ix, row in df_wind.iterrows():
+                        exposure_entry = {"placeCode": row["adm3_pcode"], "amount": int(row[layer])}
+                        exposure_place_codes.append(exposure_entry)
+
+                    exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                    exposure_data["adminLevel"] = self.admin_level
+                    exposure_data["leadTime"] = landfall_time_hr
+                    exposure_data["dynamicIndicator"] = layer
+                    exposure_data["disasterType"] = "typhoon"
+                    exposure_data["eventName"] = typhoons
+
+                    json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
+
+                    with open(json_file_path, "w") as fp:
+                        json.dump(exposure_data, fp)       
+               
+                elif Made_land_fall in [1,3]:# and len(typhhon_df.index < 1):
+                    #Made_land_fall=2
+                    
+                    
+                    
+                    distan_track_f["dist_50"] = distan_track_f["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+                    probability_dist=distan_track_f.groupby('adm3_pcode').agg(
+                                    dist50k=('dist_50', 'sum'),
+                                    aver_dis=('dist_50', 'mean'),
+                                    Num_ens=('dist_50', 'count')).reset_index()
+                    
+                    probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1)
+                    
+                    
+                    
+        
+                    df_total_upload = pd.merge(self.pcode,
+                                     probability_dist.filter(["adm3_pcode", "prob_within_50km","aver_dis"]),
+                                     how="left",
+                                     left_on="adm3_pcode",
+                                     right_on="adm3_pcode"
+                                     )
+                    
+                    df_total_upload['prob_within_50km'] =  df_total_upload['prob_within_50km'].fillna('0')
+                    
+                    df_total_upload['alert_threshold']=0
+                    df_total_upload['affected_population']=0   
+                    df_total_upload['windspeed']=0 
+                    df_total_upload['houses_affected']=0
+                    
+                    df_total_upload['show_admin_area']=df_total_upload["aver_dis"].apply(lambda x: 1 if x < 1000 else 0)
+                    
+                    df_total_upload['rainfall']=0
+                     
+
+                                  
+                    for layer in ["affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
+                        exposure_entry=[]
+                        # prepare layer
+                        logger.info(f"preparing data for {layer}")
+                        #exposure_data = {'countryCodeISO3': countrycode}
+                        exposure_data = {"countryCodeISO3": "PHL"}
+                        exposure_place_codes = []
+                        #### change the data frame here to include impact
+                        for ix, row in df_total_upload.iterrows():
+                            exposure_entry = {"placeCode": row["adm3_pcode"],
+                                            "amount": row[layer]}
+                            exposure_place_codes.append(exposure_entry)
+                            
+                        exposure_data["exposurePlaceCodes"] = exposure_place_codes
+                        exposure_data["adminLevel"] = self.admin_level
+                        exposure_data["leadTime"] = landfall_time_hr
+                        exposure_data["dynamicIndicator"] = layer
+                        exposure_data["disasterType"] = "typhoon"
+                        exposure_data["eventName"] = typhoons                     
+                        json_file_path = self.Output_folder + typhoons + f"_{layer}" + ".json"
+                        
+                        with open(json_file_path, 'w') as fp:
+                            json.dump(exposure_data, fp)
+
+        logger.info(f'finshed wind calculation') 
+        return Made_land_fall                
