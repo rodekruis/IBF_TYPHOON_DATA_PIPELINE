@@ -1,0 +1,87 @@
+name: run-typhoon-model
+
+on:
+  workflow_dispatch:
+    inputs:
+      typhoon_name:
+        description: Optional custom typhoon name
+        required: false
+        default: 'Not set'
+      remote_directory:
+        description: Optional ECMWF timestamp directory, format YYYYMMDDhhmmss
+        required: false
+        default: 'Not set'
+
+jobs:
+  run-typhoon-model:
+    runs-on: ubuntu-latest
+    env:
+      running-directory: ./IBF-Typhoon-model
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID}} 
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET}}  
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+      DATALAKE_STORAGE_ACCOUNT_NAME: ${{ secrets.DATALAKE_STORAGE_ACCOUNT_NAME}}  
+      DATALAKE_STORAGE_ACCOUNT_KEY: ${{ secrets.DATALAKE_STORAGE_ACCOUNT_KEY }} 
+      DATALAKE_API_VERSION: ${{ secrets.DATALAKE_API_VERSION }} 
+      IBF_API_URL: ${{ secrets.IBF_API_URL }} 
+      ADMIN_LOGIN: ${{ secrets.ADMIN_LOGIN }} 
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD}} 
+
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+
+    - name: Install system dependencies
+      run: |
+        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-eccodes \
+          libproj-dev \
+          libgeos-dev \
+          libspatialindex-dev \
+          libudunits2-dev \
+          libssl-dev \
+          libgdal-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+    - name: Install script
+      run: |
+        python -m pip install .
+      working-directory: ${{ env.running-directory }}
+
+    - name: Run script, typhoon name and remote directory input
+      if: ${{ github.event.inputs.typhoon_name != 'Not set' && github.event.inputs.remote_directory != 'Not set' }}
+      run: |
+        run-typhoon-model --typhoonname ${{ github.event.inputs.typhoon_name }} \
+        --remote_directory ${{ github.event.inputs.remote_directory }}
+      working-directory: ${{ env.running-directory }}
+
+    - name: Run script, typhoon name input
+      if: ${{ github.event.inputs.typhoon_name != 'Not set' && github.event.inputs.remote_directory == 'Not set' }}
+      run: |
+        run-typhoon-model --typhoonname ${{ github.event.inputs.typhoon_name }}
+      working-directory: ${{ env.running-directory }}
+
+    - name: Run script, remote directory input
+      if: ${{ github.event.inputs.typhoon_name == 'Not set' && github.event.inputs.remote_directory != 'Not set' }}
+      run: |
+        run-typhoon-model --remote_directory ${{ github.event.inputs.remote_directory }}
+      working-directory: ${{ env.running-directory }}
+
+    - name: Run script, no input
+      if: ${{ github.event.inputs.typhoon_name == 'Not set' && github.event.inputs.remote_directory == 'Not set' }}
+      run: |
+        run-typhoon-model 
+      working-directory: ${{ env.running-directory }}
+
