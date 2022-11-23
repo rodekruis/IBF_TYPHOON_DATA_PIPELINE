@@ -30,6 +30,8 @@ try:
     DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM=secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY-IBFSYSTEM").value
     DATALAKE_API_VERSION = '2018-11-09'
  
+ 
+ 
 
 
 except Exception as e:
@@ -37,21 +39,21 @@ except Exception as e:
 
 #2. Try to load secrets from env-variables (i.e. when using Github Actions)
 try:
-    import os
+    import os  
     
-    ADMIN_LOGIN = os.environ['ADMIN-LOGIN']
-    IBF_API_URL=os.environ['IBF-URL']
-    ADMIN_PASSWORD = os.environ['IBF-PRO-PASSWORD']
-    
+    ADMIN_LOGIN = os.environ['ADMIN_LOGIN']
+    IBF_API_URL=os.environ['IBF_API_URL']
+    ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']    
     #PHP_PASSWORD=os.environ['IBF_PASSWORD']
     DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE_STORAGE_ACCOUNT_NAME']        
-    DATALAKE_STORAGE_ACCOUNT_KEY_ = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
-    
-    #DATALAKE_STORAGE_ACCOUNT_KEY_ =os.environ.get("DATALAKE-STORAGE-ACCOUNT-KEY")
+    DATALAKE_STORAGE_ACCOUNT_KEY = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
+  
     print('Environment variables found.')
-    DATALAKE_STORAGE_ACCOUNT_KEY=f'{DATALAKE_STORAGE_ACCOUNT_KEY_}=='
-    DATALAKE_API_VERSION = '2018-11-09'
+   
+    DATALAKE_API_VERSION = '2021-06-08'
     #DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY2"]
+    
+    
     
     
 except Exception as e:
