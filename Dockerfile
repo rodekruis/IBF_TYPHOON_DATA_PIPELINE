@@ -26,7 +26,10 @@ RUN add-apt-repository ppa:ubuntugis/ppa \
     gdal-bin \
     libgdal-dev \
     postgresql-client \
-    libgnutls28-dev \
+	libproj-dev \
+    libgeos-dev \
+    libudunits2-dev \
+    libssl-dev \
     libgnutls28-dev \
     libspatialindex-dev \
     libeccodes0 \
