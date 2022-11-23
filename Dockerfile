@@ -1,4 +1,5 @@
-FROM ubuntu:20.04
+FROM rocker/r-ubuntu:20.04
+#FROM ubuntu:latest
 
 # Set up main directory
 RUN mkdir --parents /home/fbf/forecast
