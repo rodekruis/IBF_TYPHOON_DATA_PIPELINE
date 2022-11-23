@@ -1,4 +1,4 @@
-name: run-typhoon-model
+name: run-typhoon-model-manual
 
 on:
   workflow_dispatch:
