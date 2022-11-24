@@ -5,7 +5,8 @@ RUN mkdir --parents /home/fbf/forecast
 ENV HOME /home/fbf
 WORKDIR $HOME
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
     software-properties-common \
     nano \
     vim \
@@ -20,8 +21,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean
 
 RUN add-apt-repository ppa:ubuntugis/ppa \
-    && apt-get update \
-    && apt-get install --no-install-recommends -y \
+    && apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
     python-numpy \
     gdal-bin \
     libgdal-dev \
