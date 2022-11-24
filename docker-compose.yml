@@ -6,11 +6,10 @@ services:
     ports:
       - "587:587"
     #container_name: ibf
-    env_file:
-      - secrets
+    #env_file:
+    #  - secrets
     volumes:
       - './IBF-Typhoon-model:/home/fbf'  
       #- $TYPHOONMODEL_OUTPUT:/home/fbf
     #command: run-typhoon-model  --typhoonname="RAI" --remote_directory='20211214000000'
     command: run-typhoon-model
-

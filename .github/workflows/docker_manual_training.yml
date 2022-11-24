@@ -5,6 +5,8 @@ on:
 
 env:
   IMAGE_NAME: ibf-typhoon-model
+  DEBIAN_FRONTEND:'noninteractive'
+  TZ: 'Etc/UTC'
 
 jobs:
   build:
