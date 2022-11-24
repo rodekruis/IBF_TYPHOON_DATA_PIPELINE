@@ -1,4 +1,4 @@
-FROM rocker/r-ubuntu:20.04
+FROM ubuntu:18.04
 
 # Set up main directory
 RUN mkdir --parents /home/fbf/forecast
@@ -26,22 +26,21 @@ RUN add-apt-repository ppa:ubuntugis/ppa \
     gdal-bin \
     libgdal-dev \
     postgresql-client \
-	libproj-dev \
+		libproj-dev \
     libgeos-dev \
+	libspatialindex-dev \
     libudunits2-dev \
     libssl-dev \
-    libgnutls28-dev \
-    libspatialindex-dev \
+    libgnutls28-dev \    
     libeccodes0 \
-	libcairo2-dev\
-	libgirepository1.0-dev\
+		libcairo2-dev\
+		libgirepository1.0-dev\
     gfortran \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get purge --auto-remove \
     && apt-get clean
 
-RUN apt-get update\
-    && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl
 
 RUN apt-get update && apt-get -y upgrade && \
     apt-get -f -y install curl apt-transport-https lsb-release gnupg python3-pip python-pip && \
