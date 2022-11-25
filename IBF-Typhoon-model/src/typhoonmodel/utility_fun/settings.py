@@ -8,8 +8,7 @@ import shutil
 # 1. Try to load secrets from Azure key vault (i.e. when running through Logic App) if user has access
 try:
     from azure.identity import DefaultAzureCredential
-    from azure.keyvault.secrets import SecretClient
-    
+    from azure.keyvault.secrets import SecretClient   
     az_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
     secret_client = SecretClient(vault_url='https://ibf-flood-keys.vault.azure.net', credential=az_credential)
     
@@ -104,16 +103,18 @@ parBox=[5,115,25,135]
 
 start_time = datetime.now()
 
-ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-Active_Typhoon_event_list=['NALGAE']
+#ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#Active_Typhoon_event_list=['NALGAE']
 
-#ecmwf_remote_directory=None
-#Active_Typhoon_event_list=[]
+ecmwf_remote_directory=None
+Active_Typhoon_event_list=[]
 High_resoluation_only_Switch=False
 
 
 typhoon_event_name=None
+
 ECMWF_CORRECTION_FACTOR=1
+
 ECMWF_LATENCY_LEADTIME_CORRECTION=10 
 longtiude_limit_leadtime=120 # if track pass this point consider it has made landfall 
 
@@ -131,9 +132,9 @@ data_point = start_time.strftime("%Y%m%d")
 ###################
 
 
-#MAIN_DIRECTORY='/home/fbf/'
+MAIN_DIRECTORY='/home/fbf/'
 
-MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
+#MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
