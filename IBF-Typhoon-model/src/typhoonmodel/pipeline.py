@@ -104,9 +104,9 @@ def main():
                 db.sendNotificationTyphoon()
 
             else:
-                output_folder=Output_folder
-                active_Typhoon_event_list=Active_Typhoon_event_list
-                fc = Forecast(ecmwf_remote_directory,output_folder, active_Typhoon_event_list,countryCodeISO3, admin_level)
+                #output_folder=Output_folder
+                #active_Typhoon_event_list=Active_Typhoon_event_list
+                fc = Forecast(countryCodeISO3, admin_level)
                 logger.info('_________________finished data processing______________')
                 
                 if fc.Activetyphoon_landfall: #if it is not empty

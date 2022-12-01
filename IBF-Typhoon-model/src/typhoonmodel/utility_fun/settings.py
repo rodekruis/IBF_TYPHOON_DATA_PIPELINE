@@ -102,13 +102,21 @@ parBox=[5,115,25,135]
 
 
 start_time = datetime.now()
+### to run data pipeline for a specific event
+ecmwf_remote_directory='20221027120000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+Active_Typhoon_event_list=['NALGAE']
 
-#ecmwf_remote_directory='20221027180000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-#Active_Typhoon_event_list=['NALGAE']
 
-ecmwf_remote_directory=None
-Active_Typhoon_event_list=[]
+### to run data pipeline for a specific event
+#ecmwf_remote_directory=None
+#Active_Typhoon_event_list=[]
+
 High_resoluation_only_Switch=False
+
+if ecmwf_remote_directory==None:
+    forecastTime=datetime.utcnow()
+else:
+    forecastTime=datetime.strptime(ecmwf_remote_directory, "%Y%m%d%H%M%S")
 
 
 typhoon_event_name=None
@@ -139,6 +147,7 @@ MAIN_DIRECTORY='/home/fbf/'
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
 
+ADMIN3_PATH = MAIN_DIRECTORY+'data/gis_data/adm3_centers.csv'
 maxDistanceFromCoast=2000 # max (km) distance to consider lead time calculation 
 
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
