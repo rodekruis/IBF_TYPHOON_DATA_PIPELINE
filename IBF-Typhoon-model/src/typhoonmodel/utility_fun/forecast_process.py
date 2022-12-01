@@ -869,15 +869,32 @@ class Forecast:
                                                                           "prob_within_50km"]
                                                                          ) 
         
-        
+        '''
         impact =impact.groupby("Mun_Code").agg(
-            {"Damage_predicted": "mean",
+            {"Damage_predicted": "mean",       
              "VUL_Housing_Units":"mean",
              "number_affected_pop__prediction":"mean",
              "HAZ_dis_track_min": "min",
              "HAZ_v_max":"max",
              "prob_within_50km":"mean"}
         ).reset_index()
+        '''
+        impact =impact.groupby("Mun_Code").agg(
+           Damage_predicted=("Damage_predicted", np.nanmean),
+           Damage_predicted_minimum=("Damage_predicted", np.nanmin),
+           Damage_predicted_maximum=("Damage_predicted", np.nanmax),
+           VUL_Housing_Units=( "VUL_Housing_Units", np.nanmean),
+           number_affected_pop__prediction=("number_affected_pop__prediction",np.nanmean),
+           HAZ_dis_track_min=("HAZ_dis_track_min", np.nanmin),
+           HAZ_v_max=("HAZ_v_max",np.nanmax),
+           prob_within_50km=("prob_within_50km",np.nanmean)
+        ).reset_index()
+                
+        
+        
+ 
+        
+        
         
         impact["number_affected_pop__prediction"] = impact["number_affected_pop__prediction"].astype("int") 
         
@@ -887,14 +904,31 @@ class Forecast:
           
         
         csv_file_test = self.Output_folder + "Average_Impact_" + typhoon_names + ".csv"        
-        impact.to_csv(csv_file_test)
+        #impact.to_csv(csv_file_test)
         
   
  
-        impact_df1 =impact_HRS# pd.merge(impact2,probability_50km,how="left", left_on="Mun_Code", right_on="Mun_Code",    )
+        impact_df1 =impact.copy()# pd.merge(impact2,probability_50km,how="left", left_on="Mun_Code", right_on="Mun_Code",    )
+        
+        impact_df1.rename(
+            columns={
+            "Damage_predicted": "percentage_houses_affected_average",
+             "Damage_predicted_minimum": "percentage_houses_affected_minimum",
+             "Damage_predicted_maximum": "percentage_houses_affected_maximum",
+             "number_affected_pop__prediction":"affected_population",
+             },
+            inplace=True,)
+        
+        impact_df1.filter(['Mun_Code',
+                           'percentage_houses_affected_average',
+                           'percentage_houses_affected_minimum',
+                           'percentage_houses_affected_maximum',
+                           'affected_population']).to_csv(csv_file_test)
+        
         
   
         impact_HRS2=impact.copy()
+        
         impact_HRS2.rename(
             columns={
                 "Damage_predicted_num": "num_houses_affected",
@@ -905,6 +939,11 @@ class Forecast:
             },
             inplace=True,
         )
+        
+        
+
+                    
+                    
         
         logger.info(f"{len(impact_HRS)}")
        
@@ -935,8 +974,9 @@ class Forecast:
         impact_df5["alert_threshold"]=impact_df5.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
 
         #save to file 
-        csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"        
-        impact_df5.to_csv(csv_file2)
+        #csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"    
+            
+        #impact_df5.to_csv(csv_file2)
       
 
         #############################################################
@@ -986,9 +1026,9 @@ class Forecast:
         
         df_hazard2=df_hazard2.filter(["adm3_pcode","rainfall", "windspeed"])
  
-        csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"
+        #csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"
  
-        Model_output_data=pd.read_csv(csv_file2).filter(["adm3_pcode","prob_within_50km","houses_affected",
+        Model_output_data=impact_df5.filter(["adm3_pcode","prob_within_50km","houses_affected",
                                                          "alert_threshold","show_admin_area","affected_population"])
      
         df_total_upload = pd.merge(
