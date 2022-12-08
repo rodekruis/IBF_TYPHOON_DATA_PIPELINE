@@ -117,14 +117,15 @@ def main():
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  
                             #EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                            #EAP_TRIGGERED=fc.eap_status[typhoon_names]                                               
-                            fc.db.uploadTrackData(json_path)            
-                            fc.db.uploadTyphoonData(json_path) 
-                            fc.db.sendNotificationTyphoon() 
+                            #EAP_TRIGGERED=fc.eap_status[typhoon_names]                                              
                             fc.db.postResulToDatalake()
                             forecast_directory=typhoon_names + fc.forecast_time
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
+                            fc.db.uploadTrackData(json_path) 
+                            fc.db.uploadTyphoonData(json_path)                             
+                            fc.db.uploadImage(typhoons=typhoons,eventName=typhoons)
+                            fc.db.sendNotificationTyphoon() 
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
                             logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')   
@@ -220,7 +221,7 @@ def main():
         logger.error("Typhoon Data PIPELINE ERROR")
         logger.error(e)
     #elapsedTime = str(time.time() - start_time)
-    logger.info('simulation finished')#str(elapsedTime))
+    #logger.info('simulation finished')#str(elapsedTime))
     
  
  

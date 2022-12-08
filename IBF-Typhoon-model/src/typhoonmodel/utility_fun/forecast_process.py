@@ -54,6 +54,7 @@ class Forecast:
         self.db = DatabaseManager(countryCodeISO3, admin_level)
         self.TyphoonName = typhoon_event_name
         self.admin_level = admin_level
+        self.countryCodeISO3=countryCodeISO3
         self.remote_dir = ecmwf_remote_directory 
         self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
@@ -141,6 +142,7 @@ class Forecast:
         self.WIND_SPEED_THRESHOLD =  WIND_SPEED_THRESHOLD  #  
         self.longtiude_limit_leadtime=longtiude_limit_leadtime
         self.forecastTime=forecastTime
+        self.logoPath=logoPath
         
 
         # Sometimes the ECMWF ftp server complains about too many requests
@@ -303,7 +305,10 @@ class Forecast:
                                 #######################################
                                 ### CALCULATE IMPACT 
                                 #######################################
+                                logger.info('Calculate Impact Maps ')  
                                 self.impact_model(typhoon_names=typhoons,wind_data=calcuated_wind_fields)  
+                                logger.info('make email attachment map  ')  
+                                self.makeMaps(typhoons=typhoons)
                                 logger.info('go to data upload ')                      
                          
                 elif is_land_fall in [2,5]:
@@ -671,7 +676,7 @@ class Forecast:
             calculatedminDistanceToCost=hrs_track_df_.distanceLand.min()            
             
             hrs_track_df_['firstLandfall']=False
-            
+            hrs_track_df_['closestToLand']=False
             ###############################################
             ### calculate lead time 
             ###############################################
@@ -717,12 +722,12 @@ class Forecast:
                 landfall_time_hr = str(hours) + "-hour"
                 
                 ### if we want to add point clos to land 
-                '''
+    
                 for i, data in hrs_track_df_.iterrows():
                     if data.distanceLand == calculatedminDistanceToCost:
-                        hrs_track_df_.at[i,'firstLandfall'] = True
+                        hrs_track_df_.at[i,'closestToLand'] = True
                         hrs_track_df_.at[i,'HH'] = '00:00' 
-                '''
+              
             else:
                 Made_land_fall=60 #EVENT IS BEYOUND THE MAXIMUM DISTANCE LIMIT (No event scenario)
                 landfall_time_hr='168-hour' 
@@ -734,6 +739,7 @@ class Forecast:
                                             'firstLandfall',
                                             'closestMancipality',
                                             'distanceLand',
+                                            'closestToLand',
                                             "LAT",
                                             "LON",
                                             'HH',
@@ -747,7 +753,7 @@ class Forecast:
                 typhoon_tracks.rename(columns={"LON": "lon", "LAT": "lat"}, inplace=True)
             
                 
-                wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX","firstLandfall"]]
+                wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX","firstLandfall",'closestToLand']]
                 wind_tracks_hrs.dropna(inplace=True)
                 
                 wind_tracks_hrs = wind_tracks_hrs.round(2)
@@ -765,6 +771,7 @@ class Forecast:
                             "category":row["catagories"],
                             "timestampOfTrackpoint": row["timestampOfTrackpoint"],
                             "firstLandfall":row["firstLandfall"],
+                            "closestToLand":row["closestToLand"],
                         }
                         exposure_place_codes.append(exposure_entry)
 
@@ -920,6 +927,7 @@ class Forecast:
             inplace=True,)
         
         impact_df1.filter(['Mun_Code',
+                           'HAZ_dis_track_min',
                            'percentage_houses_affected_average',
                            'percentage_houses_affected_minimum',
                            'percentage_houses_affected_maximum',
@@ -1608,5 +1616,94 @@ class Forecast:
                 with open(json_file_path, 'w') as fp:
                     json.dump(exposure_data, fp)
                 logger.info('finshed wind calculation')
-                
     
+    def makeMaps(self,typhoons):
+        import numpy as np
+        import matplotlib.colors as colors
+        import geopandas as gpd
+        import earthpy.plot as ep 
+        import contextily as cx       
+        import numpy as np
+        import rasterio
+        import matplotlib.pyplot as plt
+        import matplotlib as mpl
+        import geopandas as gpd
+        import pandas as pd
+        import earthpy.plot as ep 
+        import contextily as cx
+        import imageio
+        
+        # Set figure size and title size of plots
+        mpl.rcParams['figure.figsize'] = (24, 24)
+        mpl.rcParams['axes.titlesize'] = 20   
+            
+        shfile=self.admin 
+        csv_file_test = self.Output_folder + "Average_Impact_" + typhoons + ".csv"  
+        
+        impact=pd.read_csv(csv_file_test).rename(columns={"percentage_houses_affected_average": "impact"})
+        track=pd.read_csv(os.path.join(self.Input_folder, f"{typhoons}_track.csv"))
+        track_gdf = gpd.GeoDataFrame(track, geometry=gpd.points_from_xy(track.LON, track.LAT))
+
+        df_adm_impact = pd.merge(shfile, impact.filter(['Mun_Code','impact','HAZ_dis_track_min']),  how='left', left_on='adm3_pcode', right_on = 'Mun_Code')
+        df_map=df_adm_impact.query('HAZ_dis_track_min<200')
+        df_map1=df_adm_impact.query('HAZ_dis_track_min<300')
+        df_map.fillna(0,inplace=True)
+        
+        model_run_time=self.forecastTime
+
+        subtitle =f"Predicted damage per Municipality for {typhoons}\nImpact map generated at: {model_run_time}\nSource of wind speed forecast ECMWF\nOnly Areas within 150km of forecasted track are included\nPrediction is about completely damaged houses only\n"
+
+        bounds =np.array([0,1,3,5,7.5,10])
+        norm = mpl.colors.BoundaryNorm(boundaries=bounds, ncolors=5) 
+
+        palette = mpl.colors.ListedColormap(['#ffffe5','#fcae91','#fb6a4a','#de2d26','#a50f15'])
+        
+        fig = plt.figure()
+        #rect : This parameter is the dimensions [left, bottom, width, height] of the new axes.
+        axes1 = fig.add_axes([0.1, 0.1, 0.95, 0.95]) 
+        axes2 = fig.add_axes([0.6, 0.8, 0.33, 0.25]) 
+        axes3 = fig.add_axes([0.1, 0.8, 0.6, 0.125])
+        axes4 = fig.add_axes([0.1, 0.95, 0.3, 0.06]) 
+
+        # main figure
+        track_df=track_gdf.query('LON >117')
+        track_df=track_df.query('LON <128')
+        track_df['geometry'] = track_df['geometry'].buffer(0.09)
+        
+        df_map1.plot(ax=axes1, alpha=0.3, color='white', edgecolor='#969696')
+        track_df.plot(ax=axes1, edgecolor="k")
+        
+        cx.add_basemap(axes1, crs=df_adm_impact.crs.to_string(), zoom=7,alpha=0.3)
+        df_map.plot(column='impact',
+                ax=axes1,
+                legend=True,
+                cmap=palette,
+                legend_kwds={'label': "% of Completely Damaged Houses",'orientation': "vertical",'shrink':0.35},
+                norm=norm,
+                alpha=0.7,
+                )
+        axes1.set_axis_off()
+        plt.grid()
+
+        lon_=0.5*(df_map.total_bounds[0]+df_map.total_bounds[2])
+        lat_=0.5*(df_map.total_bounds[1]+df_map.total_bounds[3])
+
+        tr=pd.DataFrame([[lat_,lon_]]).rename(columns={0:'lat_',1:'lon_'})
+
+        point_gdf = gpd.GeoDataFrame(tr,geometry=gpd.points_from_xy(tr.lon_, tr.lat_))
+        point_gdf['geometry'] = point_gdf['geometry'].buffer(2)
+
+        point_gdf.plot(ax=axes2, alpha=0.15, color='red', edgecolor='red') 
+        df_adm_impact.plot(ax=axes2, alpha=0.3, color='white', edgecolor='#969696') 
+        cx.add_basemap(axes2, crs=df_adm_impact.crs.to_string(), zoom=7,alpha=0.3)
+        axes2.set_axis_off()
+        
+        #axis  
+        im2 = imageio.imread(self.logoPath) 
+        axes4.imshow(im2)
+        axes4.axis('off')
+        axes3.text(.05, 0.30, subtitle, fontsize = 22)
+        axes3.set_axis_off()
+        plt.grid(); 
+        image_name = self.Output_folder + self.countryCodeISO3 + '_' + typhoons +'_houseing_damage.png'         
+        fig.savefig(image_name, dpi=400)

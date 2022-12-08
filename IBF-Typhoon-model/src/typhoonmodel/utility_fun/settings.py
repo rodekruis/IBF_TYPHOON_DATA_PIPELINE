@@ -1,10 +1,11 @@
 import os
 from datetime import datetime, timedelta
 import shutil
+from pathlib import Path
 ##################
 ## LOAD SECRETS ##
 ##################
-
+'''
 # 1. Try to load secrets from Azure key vault (i.e. when running through Logic App) if user has access
 try:
     from azure.identity import DefaultAzureCredential
@@ -57,7 +58,7 @@ try:
     
 except Exception as e:
     print('No environment variables found.')
-
+'''
 # 3. If 1. and 2. both fail, then assume secrets are loaded via secrets.py file (when running locally). If neither of the 3 options apply, this script will fail.
 try:
     from typhoonmodel.utility_fun.secrets import *
@@ -103,7 +104,7 @@ parBox=[5,115,25,135]
 
 start_time = datetime.now()
 ### to run data pipeline for a specific event
-#ecmwf_remote_directory='20221027120000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20221027000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NALGAE']
 
 
@@ -142,6 +143,11 @@ data_point = start_time.strftime("%Y%m%d")
 
 MAIN_DIRECTORY='/home/fbf/'
 
+
+#MAIN_DIRECTORY ='./'# str(Path(__file__).parent.absolute())
+
+ 
+
 #MAIN_DIRECTORY='C:/Users/ATeklesadik/OneDrive - Rode Kruis/Documents/documents/IBF_TYPHOON_DATA_PIPELINE/IBF-Typhoon-model/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
@@ -156,10 +162,12 @@ CENTROIDS_PATH = MAIN_DIRECTORY+'data/gis_data/centroids_windfield.geojson'
 Input_folder = MAIN_DIRECTORY+ 'forecast/Input/'
 Output_folder = MAIN_DIRECTORY+ 'forecast/Output/'
 ECMWF_folder = Input_folder+'ECMWF/'
+
 rainfall_path =MAIN_DIRECTORY+ 'forecast/rainfall/' 
 
 mock_data_path = MAIN_DIRECTORY+'data/mock/'
 ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
+logoPath = MAIN_DIRECTORY+'/data/logos/combined_logo.png'
 
 
 for dir_path in [Input_folder,Output_folder,rainfall_path]:
@@ -168,7 +176,6 @@ for dir_path in [Input_folder,Output_folder,rainfall_path]:
         os.makedirs(dir_path)
     else:
         os.makedirs(dir_path)
-
 
 
 

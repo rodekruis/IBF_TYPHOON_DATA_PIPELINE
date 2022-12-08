@@ -71,39 +71,53 @@ class DatabaseManager:
     def uploadTyphoonData(self,json_path):  
         for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
-            with open(json_file_path) as json_file:
-                body = json.load(json_file)
-                #body['adminLevel'] = self.admin_level
-                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
-            logger.info(f'Uploaded data for indicator: {indicator} ')
- 
+            try:
+                with open(json_file_path) as json_file:
+                    body = json.load(json_file)
+                    #body['adminLevel'] = self.admin_level
+                    self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+                logger.info(f'Uploaded data for indicator: {indicator} ')
+            except requests.exceptions.ReadTimeout:
+                logger.info(f'time out during Uploading data for indicator: {indicator} ')  
+                pass    
     def uploadTyphoonDataAfterlandfall(self,json_path):  
         for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
-            with open(json_file_path) as json_file:
-                body = json.load(json_file)
-                body['leadTime']= '0-hour'
-                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
-            logger.info(f'Uploaded data for indicator: {indicator} ')
-                       
+            try:
+                with open(json_file_path) as json_file:
+                    body = json.load(json_file)
+                    body['leadTime']= '0-hour'
+                    self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+                logger.info(f'Uploaded data for indicator: {indicator} ')
+            except requests.exceptions.ReadTimeout:
+                logger.info(f'time out during Uploading data for indicator: {indicator} ')  
+                pass                          
     def uploadTyphoonDataNoLandfall(self,json_path):  
         for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
-            with open(json_file_path) as json_file:
-                body = json.load(json_file)
-                #body['adminLevel'] = self.admin_level
-                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
-            logger.info(f'Uploaded data for indicator: {indicator} ')
-            
-    def uploadTyphoonData_no_event(self,json_path):  
-        for indicator in ["affected_population","houses_affected","alert_threshold"]:
-            json_file_path =json_path +f'null_{indicator}' + '.json'
-            with open(json_file_path) as json_file:
-                body = json.load(json_file)
-                #body['adminLevel'] = self.admin_level
-                self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
-            logger.info(f'Uploaded data for indicator: {indicator} ')
-            
+            try:
+                with open(json_file_path) as json_file:
+                    body = json.load(json_file)
+                    #body['adminLevel'] = self.admin_level
+                    self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+                logger.info(f'Uploaded data for indicator: {indicator} ')
+            except requests.exceptions.ReadTimeout:
+                logger.info(f'time out during Uploading data for indicator: {indicator} ')  
+                pass            
+    def uploadTyphoonData_no_event(self,json_path):
+        for indicator in ["affected_population","houses_affected","alert_threshold"]: #
+            try: 
+                json_file_path =json_path +f'null_{indicator}' + '.json'
+                with open(json_file_path) as json_file:
+                    body = json.load(json_file)
+                    #body['adminLevel'] = self.admin_level
+                    self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
+                logger.info(f'Uploaded data for indicator: {indicator} ')            
+
+            except requests.exceptions.ReadTimeout:
+                logger.info(f'time out during Uploading data for indicator: {indicator} ')  
+                pass
+
     def uploadCalculatedAffected(self):
         for adminlevels in SETTINGS[self.countryCodeISO3]['levels']:#range(1,self.admin_level+1):            
             for indicator, values in self.EXPOSURE_DATA_SOURCES.items():
@@ -259,7 +273,8 @@ class DatabaseManager:
             self.API_SERVICE_URL + path,
             json=body,
             files=files,
-            headers=headers
+            headers=headers,
+            timeout=300
         )
          
         if r.status_code >= 400:
@@ -464,3 +479,44 @@ class DatabaseManager:
                     filePath = os.path.join(dirName, filename)
                     # Add file to zip
                     zipObj.write(filePath, basename(filePath))
+    
+    def uploadImage(self,typhoons,eventName='no-name'):
+        disasterType = self.getDisasterType()
+       
+        imageFile = self.Output_folder + self.countryCodeISO3 + '_' + typhoons +'_houseing_damage.png'
+  
+        files = {
+            'image': (imageFile, open(imageFile, 'rb'), "image/png"), 
+            }
+        data = {"submit": "Upload Image" }
+        
+        path_=f'event/event-map-image/{self.countryCodeISO3}/{disasterType}/{eventName}'          
+        self.apiPostRequestImage(path_,
+                                 files=files,
+                                 data=data
+                                 )
+        logger.info(f'Uploaded image-file: {imageFile}')
+        
+    def apiPostRequestImage(self, path,files=None,data=None):
+        TOKEN = self.apiAuthenticate()
+
+        headers={'Authorization': 'Bearer ' + TOKEN}
+
+        session = requests.Session()
+        retry = Retry(connect=3, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+      
+
+        r = session.post(
+            self.API_SERVICE_URL + path,  
+            files=files,
+            data=data,
+            headers=headers
+        )
+         
+        if r.status_code >= 400:
+            #logger.info(r.text)
+            logger.error("PIPELINE ERROR")
+            raise ValueError()
