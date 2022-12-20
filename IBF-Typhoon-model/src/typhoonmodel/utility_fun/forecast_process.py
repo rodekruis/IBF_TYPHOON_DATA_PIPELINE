@@ -1260,8 +1260,8 @@ class Forecast:
         DREF_trigger_list_10=pd.DataFrame.from_dict(DREF_trigger_list_10, orient="index").reset_index()
         
         DREF_trigger_list_10.rename(columns={"index": "Threshold", 0: "Scenario",1: "Trigger status"}).to_csv(
-            json_file_path
-        )
+            json_file_path,index=False)
+
         
         
         EAPTrigger=self.EAPTrigger   

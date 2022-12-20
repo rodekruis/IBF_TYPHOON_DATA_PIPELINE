@@ -465,10 +465,19 @@ class DatabaseManager:
                 file_contents = local_file.read()
                 file_client = dir_client.create_file(f"{ibfresultfile}")
                 file_client.upload_data(file_contents, overwrite=True)
-
+            return 1
         except Exception as e:
-            print(e) 
+            print(e)
+            return 0
             
+            
+    def postResulToSkype(self,skypUsername,skypPassword,channel_id):
+        from skpy import Skype        
+        msg='AUTOMATED MESSAGE FROM DATAPIPELINE- Model output files based on latest ECMWF forecast can be found here:- https://510ibfsystem.blob.core.windows.net/ibftyphoonforecast/ibf_model_results/model_outputs.zip '
+        sk = Skype(skypUsername,skypPassword)
+        channel = sk.chats.chat(channel_id) 
+        channel.sendMsg(msg)
+               
     def zipFilesInDir(self,dirName, zipFileName, filter):
         from zipfile import ZipFile
         import os

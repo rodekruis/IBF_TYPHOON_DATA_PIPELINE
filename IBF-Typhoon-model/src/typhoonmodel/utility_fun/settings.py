@@ -5,7 +5,7 @@ from pathlib import Path
 ##################
 ## LOAD SECRETS ##
 ##################
-
+'''
 # 1. Try to load secrets from Azure key vault (i.e. when running through Logic App) if user has access
 try:
     from azure.identity import DefaultAzureCredential
@@ -53,12 +53,10 @@ try:
     DATALAKE_API_VERSION = '2021-06-08'
     #DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY2"]
     
-    
-    
-    
 except Exception as e:
     print('No environment variables found.')
-
+    
+''' 
 # 3. If 1. and 2. both fail, then assume secrets are loaded via secrets.py file (when running locally). If neither of the 3 options apply, this script will fail.
 try:
     from typhoonmodel.utility_fun.secrets import *
@@ -91,7 +89,7 @@ SETTINGS_SECRET = {
 
 
 #Trigger Values
-EAPTrigger='70' #Average
+EAPTrigger='Average' #Average
 
 dref_probabilities_10 = {
             "50": [50,'Moderate'],
@@ -158,8 +156,8 @@ start_time = datetime.now()
 
 
 ### to run data pipeline for a specific event
-ecmwf_remote_directory=None
-Active_Typhoon_event_list=[]
+#ecmwf_remote_directory=None
+#ctive_Typhoon_event_list=[]
 
 High_resoluation_only_Switch=False
 
@@ -230,8 +228,13 @@ for dir_path in [Input_folder,Output_folder,rainfall_path]:
 readmefilePath=os.path.join(Output_folder, "readme.txt")
 
 
-lines = ['Readme', '1. in the csv file *_admin3_leadtime.csv column name Potential_leadtime refers to',         
-         'time until typhoon reaches point closest to this municipality','']
+lines = ['Readme\n',
+         '1.In the csv file *_admin3_leadtime.csv column name Potential_leadtime refers to\n  the time until the typhoon reaches the point closest to this municipality',
+         '',
+         '2.In the csv file *_dref_trigger_status_10_percent.csv column name\n\t Threshold =\t\t The name of EAP threshold (based on probability or Average)\n\t Scenario=\t\t probability values for the threshold (NA for average)\n\t Trigger status=\t If EAP will be activated based on the specific scenario',
+         '']
+
+
 
 with open(readmefilePath, 'w') as f:
     for line in lines:

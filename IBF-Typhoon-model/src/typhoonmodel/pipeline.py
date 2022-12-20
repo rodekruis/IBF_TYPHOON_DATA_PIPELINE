@@ -118,7 +118,7 @@ def main():
                             json_path = fc.Output_folder  + typhoon_names  
                             #EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
                             #EAP_TRIGGERED=fc.eap_status[typhoon_names]                                              
-                            fc.db.postResulToDatalake()
+                            states=fc.db.postResulToDatalake()
                             forecast_directory=typhoon_names + fc.forecast_time
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
@@ -126,6 +126,12 @@ def main():
                             fc.db.uploadTyphoonData(json_path)                             
                             #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
                             fc.db.sendNotificationTyphoon() 
+                            try:
+                                if states==1:
+                                    fc.db.postResulToSkype(skypUsername,skypPassword,channel_id)
+                                    
+                            except:
+                                pass
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
                             logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')   
