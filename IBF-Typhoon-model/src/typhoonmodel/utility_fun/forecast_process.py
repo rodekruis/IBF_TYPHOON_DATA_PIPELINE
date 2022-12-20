@@ -1216,7 +1216,7 @@ class Forecast:
         
         agg_impact_10 = probability_impact["Trigger3x10"].values
         
-        logger.info(f'calculate trigger threshold{len(agg_impact_10)}')
+        logger.info(f'calculate trigger threshold: {len(agg_impact_10)}')
         
         if len(agg_impact_10)>0:
             trigger_stat_dref10 = 100*(sum(agg_impact_10) /len(agg_impact_10))
@@ -1264,7 +1264,7 @@ class Forecast:
         )
         
         
-        EAPTrigger=self.EAPTrigger=EAPTrigger        
+        EAPTrigger=self.EAPTrigger   
         
         
         #if any(DREF_trigger_list_10['Trigger status'].values):
