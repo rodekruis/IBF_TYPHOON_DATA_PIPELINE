@@ -473,12 +473,13 @@ class DatabaseManager:
         from zipfile import ZipFile
         import os
         from os.path import basename       
+        files = [ fi for fi in os.listdir(dirName) if not fi.endswith(".json") ]
         with ZipFile(zipFileName, 'w') as zipObj: # create a ZipFile object            
-            for filename in os.listdir(dirName): # Iterate over all the files in directory
-                if filter(filename):
-                    filePath = os.path.join(dirName, filename)
-                    # Add file to zip
-                    zipObj.write(filePath, basename(filePath))
+            for filename in files:#os.listdir(dirName): # Iterate over all the files in directory
+                #if filter(filename):
+                filePath = os.path.join(dirName, filename)
+                # Add file to zip
+                zipObj.write(filePath, basename(filePath))
     
     def uploadImage(self,typhoons,eventName='no-name'):
         disasterType = self.getDisasterType()

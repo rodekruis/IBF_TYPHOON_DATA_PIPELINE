@@ -65,7 +65,7 @@ class Forecast:
         self.rainfall_path = rainfall_path
         self.Active_Typhoon_event_list=Active_Typhoon_event_list
         self.Output_folder = Output_folder
-        
+        self.EAPTrigger=EAPTrigger        
         self.Show_Areas_on_IBF_radius=Show_Areas_on_IBF_radius
         ##Create grid points to calculate Winfield
         cent = Centroids()
@@ -618,8 +618,11 @@ class Forecast:
                 hours = int(seconds // 3600)
                 admin40.at[i,'leadTime'] =hours 
                 
+            #time2reaches_point_closest2municipality
+            admin40['Potential_leadtime']=admin40['leadTime']      
             adminFilePath=os.path.join(self.Output_folder, f"{typhoons}_admin3_leadtime.csv")
-            admin40.to_csv(adminFilePath,index=False)
+            
+            admin40.filter(['adm3_pcode','adm3_en','Potential_leadtime']).to_csv(adminFilePath,index=False)
             
  
  
@@ -845,6 +848,7 @@ class Forecast:
 
         
         df_impact_forecast['Damage_predicted_num'] = df_impact_forecast.apply(lambda x: 0.01*x['Damage_predicted']*x['VUL_Housing_Units'], axis=1)
+        
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast.apply(lambda x: self.Number_affected(x["Damage_predicted_num"],x["Damage_predicted"]), axis=1).values
         
         #df_impact_forecast=df_impact_forecast[~df_impact_forecast['Damage_predicted_num'].isna()]
@@ -865,7 +869,8 @@ class Forecast:
         ].astype("int")
         '''        
         df_impact_forecast["Damage_predicted_num"] = df_impact_forecast["Damage_predicted_num"].astype("int")   
-        df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["Damage_predicted_num"].astype("int") 
+        
+        df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["number_affected_pop__prediction"].astype("int") 
         
         impact = df_impact_forecast.copy()
         
@@ -1192,9 +1197,19 @@ class Forecast:
                 NUmber_of_affected_municipality=('Mun_Code','count'),
                 Total_buildings_ML_Model=('Damage_predicted_num', sum),
                 Trigger_ML_Model=('Trigger', sum)).reset_index()
+        
+        probability_impact2=df_impact_forecast.groupby('Mun_Code').agg(
+                average_ML_Model=('Damage_predicted','mean')).reset_index()
             
         ### DREF trigger based on 10% damage per manucipality  
         DREF_trigger_list_10={}
+        
+        
+ 
+        probability_impact2['Trigger']=probability_impact2.apply(lambda x:1 if x.average_ML_Model>10 else 0,axis=1)
+        
+        agg_impact_100 = 'True' if sum(probability_impact2["Trigger"].values)>2 else 'False' #based on average
+    
         
         
         probability_impact['Trigger3x10']=probability_impact.apply(lambda x:1 if x.Trigger_ML_Model>2 else 0,axis=1)
@@ -1232,7 +1247,8 @@ class Forecast:
             
             #DREF_trigger_list_10[key] = dref_trigger_status10
             DREF_trigger_list_10[key] = [thershold,trigger_stat_1]#dref_trigger_status10   
-            
+        DREF_trigger_list_10['Average'] = ['NA',agg_impact_100] #based on average model prediction 
+        
         self.eap_status[typhoon_names] = EAP_TRIGGERED
         self.eap_status_bool[typhoon_names] = eap_status_bool
         
@@ -1246,6 +1262,17 @@ class Forecast:
         DREF_trigger_list_10.rename(columns={"index": "Threshold", 0: "Scenario",1: "Trigger status"}).to_csv(
             json_file_path
         )
+        
+        
+        EAPTrigger=self.EAPTrigger=EAPTrigger        
+        
+        
+        #if any(DREF_trigger_list_10['Trigger status'].values):
+        if any(DREF_trigger_list_10.query('Threshold==@EAPTrigger')['Trigger status'].values):
+            eap_status_bool_=1
+        else:
+            eap_status_bool_=0
+            
         
         #probability based on number of buildings 
         dref_trigger_status = {}
@@ -1271,10 +1298,7 @@ class Forecast:
         dref_trigger_statusf=dref_trigger_status.rename(columns={"index": "Threshold", 0: "Status",1: "threshold_probability",2: "Pridiction_probability"})
         dref_trigger_statusf.to_csv(json_file_path )
         
-        if any(dref_trigger_statusf['Status'].values):
-            eap_status_bool_=1
-        else:
-            eap_status_bool_=0
+
             
         return eap_status_bool_
         
@@ -1634,8 +1658,8 @@ class Forecast:
         import imageio
         
         # Set figure size and title size of plots
-        mpl.rcParams['figure.figsize'] = (24, 24)
-        mpl.rcParams['axes.titlesize'] = 20   
+        mpl.rcParams['figure.figsize'] = (24,24)
+        mpl.rcParams['axes.titlesize'] = 16   
             
         shfile=self.admin 
         csv_file_test = self.Output_folder + "Average_Impact_" + typhoons + ".csv"  
@@ -1668,7 +1692,7 @@ class Forecast:
         # main figure
         track_df=track_gdf.query('LON >117')
         track_df=track_df.query('LON <128')
-        track_df['geometry'] = track_df['geometry'].buffer(0.09)
+        track_df['geometry'] = track_df['geometry'].buffer(0.05)
         
         df_map1.plot(ax=axes1, alpha=0.3, color='white', edgecolor='#969696')
         track_df.plot(ax=axes1, edgecolor="k")
@@ -1702,8 +1726,8 @@ class Forecast:
         im2 = imageio.imread(self.logoPath) 
         axes4.imshow(im2)
         axes4.axis('off')
-        axes3.text(.05, 0.30, subtitle, fontsize = 22)
+        axes3.text(.05, 0.30, subtitle, fontsize = 16)
         axes3.set_axis_off()
         plt.grid(); 
         image_name = self.Output_folder + self.countryCodeISO3 + '_' + typhoons +'_houseing_damage.png'         
-        fig.savefig(image_name, dpi=400)
+        fig.savefig(image_name, dpi=300)

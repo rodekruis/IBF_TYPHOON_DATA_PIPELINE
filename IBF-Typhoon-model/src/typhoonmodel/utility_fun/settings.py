@@ -104,13 +104,13 @@ parBox=[5,115,25,135]
 
 start_time = datetime.now()
 ### to run data pipeline for a specific event
-#ecmwf_remote_directory='20221027000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
-#Active_Typhoon_event_list=['NALGAE']
+ecmwf_remote_directory='20221027000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+Active_Typhoon_event_list=['NALGAE']
 
 
 ### to run data pipeline for a specific event
-ecmwf_remote_directory=None
-Active_Typhoon_event_list=[]
+#ecmwf_remote_directory=None
+#Active_Typhoon_event_list=[]
 
 High_resoluation_only_Switch=False
 
@@ -178,8 +178,18 @@ for dir_path in [Input_folder,Output_folder,rainfall_path]:
         os.makedirs(dir_path)
 
 
+readmefilePath=os.path.join(Output_folder, "readme.txt")
 
 
+lines = ['Readme', '1. in the csv file *_admin3_leadtime.csv column name Potential_leadtime refers to',         
+         'time until typhoon reaches point closest to this municipality','']
+
+with open(readmefilePath, 'w') as f:
+    for line in lines:
+        f.write(line)
+        f.write('\n')
+        
+        
     
     
 Population_Growth_factor=1.15 #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
@@ -190,6 +200,19 @@ Housing_unit_correction={'year':['2006','2007','2008','2009','2010','2011','2012
 
 #Trigger Values
 
+
+
+EAPTrigger='70' #Average
+
+dref_probabilities_10 = {
+            "50": [50,'Moderate'],
+            "70": [70,'High'],
+            "90":[90,'Very High'],
+        }
+
+
+
+
 dref_probabilities = {
     "100k": [100000, 0.5],
     "80k": [80000, 0.6],
@@ -197,11 +220,6 @@ dref_probabilities = {
     "50k": [50000, 0.8],
     "30k": [30000, 0.95],
 }
-dref_probabilities_10 = {
-            "33": [33,'Moderate'],
-            "50": [50,'High'],
-            "70":[70,'Very High'],
-        }
         
 cerf_probabilities = {
     "80k": [80000, 0.5],

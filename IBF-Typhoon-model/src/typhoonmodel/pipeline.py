@@ -124,7 +124,7 @@ def main():
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
                             fc.db.uploadTrackData(json_path) 
                             fc.db.uploadTyphoonData(json_path)                             
-                            fc.db.uploadImage(typhoons=typhoons,eventName=typhoons)
+                            #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
                             fc.db.sendNotificationTyphoon() 
                             
                         elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
