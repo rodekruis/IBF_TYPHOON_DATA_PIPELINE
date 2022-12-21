@@ -128,8 +128,8 @@ def main():
                             fc.db.sendNotificationTyphoon() 
                             try:
                                 if states==1:
-                                    fc.db.postResulToSkype(skypUsername,skypPassword,channel_id)
-                                    
+                                    logger.info('posting to skype')
+                                    fc.db.postResulToSkype(skypUsername,skypPassword,channel_id)                                    
                             except:
                                 pass
                             

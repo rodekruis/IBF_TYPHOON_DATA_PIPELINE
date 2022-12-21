@@ -1208,7 +1208,7 @@ class Forecast:
  
         probability_impact2['Trigger']=probability_impact2.apply(lambda x:1 if x.average_ML_Model>10 else 0,axis=1)
         
-        agg_impact_100 = 'True' if sum(probability_impact2["Trigger"].values)>2 else 'False' #based on average
+        agg_impact_100 = True if sum(probability_impact2["Trigger"].values)>2 else False #based on average
     
         
         
@@ -1234,12 +1234,12 @@ class Forecast:
             thershold=values[1]
             if  (trigger_stat_dref10 > values[0]):
                 trigger_stat_1=True
-                EAP_TRIGGERED = "yes"
+                #EAP_TRIGGERED = "yes"
                 eap_status_bool = 1
  
             else:
                 trigger_stat_1=False
-                EAP_TRIGGERED = "no"
+                #EAP_TRIGGERED = "no"
     
             dref_trigger_status10['triggered_prob'] = thershold 
             dref_trigger_status10['EVENT'] = typhoon_names 
@@ -1249,8 +1249,7 @@ class Forecast:
             DREF_trigger_list_10[key] = [thershold,trigger_stat_1]#dref_trigger_status10   
         DREF_trigger_list_10['Average'] = ['NA',agg_impact_100] #based on average model prediction 
         
-        self.eap_status[typhoon_names] = EAP_TRIGGERED
-        self.eap_status_bool[typhoon_names] = eap_status_bool
+
         
         #---------------------------------------------  
    
@@ -1259,8 +1258,8 @@ class Forecast:
         )
         DREF_trigger_list_10=pd.DataFrame.from_dict(DREF_trigger_list_10, orient="index").reset_index()
         
-        DREF_trigger_list_10.rename(columns={"index": "Threshold", 0: "Scenario",1: "Trigger status"}).to_csv(
-            json_file_path,index=False)
+        DREF_trigger_list_10f=DREF_trigger_list_10.rename(columns={"index": "Threshold", 0: "Scenario",1: "Trigger status"})
+        DREF_trigger_list_10f.to_csv(json_file_path,index=False)
 
         
         
@@ -1268,11 +1267,15 @@ class Forecast:
         
         
         #if any(DREF_trigger_list_10['Trigger status'].values):
-        if any(DREF_trigger_list_10.query('Threshold==@EAPTrigger')['Trigger status'].values):
+        if any(DREF_trigger_list_10f.query('Threshold==@EAPTrigger')['Trigger status'].values):
             eap_status_bool_=1
+            EAP_TRIGGERED='yes'
         else:
             eap_status_bool_=0
+            EAP_TRIGGERED='no'
             
+        self.eap_status[typhoon_names] = EAP_TRIGGERED
+        self.eap_status_bool[typhoon_names] = eap_status_bool_
         
         #probability based on number of buildings 
         dref_trigger_status = {}
@@ -1296,7 +1299,8 @@ class Forecast:
         )
                 
         dref_trigger_statusf=dref_trigger_status.rename(columns={"index": "Threshold", 0: "Status",1: "threshold_probability",2: "Pridiction_probability"})
-        dref_trigger_statusf.to_csv(json_file_path )
+        #dref_trigger_statusf.to_csv(json_file_path )
+        logger.info(f'EAP trigger satus is: {eap_status_bool_}')
         
 
             
@@ -1349,6 +1353,7 @@ class Forecast:
             )
             
             start_trigger_status=pd.DataFrame.from_dict(start_trigger_status, orient="index").reset_index()
+            
             start_trigger_status.rename(columns={"index": "Threshold",
                                                  0: "province",
                                                  1: "Trigger probability threshold",

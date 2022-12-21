@@ -156,8 +156,8 @@ start_time = datetime.now()
 
 
 ### to run data pipeline for a specific event
-#ecmwf_remote_directory=None
-#ctive_Typhoon_event_list=[]
+ecmwf_remote_directory=None
+ctive_Typhoon_event_list=[]
 
 High_resoluation_only_Switch=False
 
