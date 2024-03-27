@@ -46,7 +46,7 @@ import pandas as pd
 import scipy.io.matlab as matlab
 from shapely.geometry import Point, LineString, MultiLineString
 import shapely.ops
-from sklearn.neighbors import DistanceMetric
+from sklearn.metrics import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
 

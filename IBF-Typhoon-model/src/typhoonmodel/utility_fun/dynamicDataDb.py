@@ -47,7 +47,8 @@ class DatabaseManager:
         if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"]:
             body = {
                 'countryCodeISO3': self.countryCodeISO3,
-                'disasterType': self.getDisasterType()
+                'disasterType': self.getDisasterType(),
+                'date': datetime.now().isoformat() + 'Z'
                 }
             self.apiPostRequest('notification/send', body=body)
             

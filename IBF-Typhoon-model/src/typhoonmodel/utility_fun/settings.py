@@ -136,6 +136,15 @@ START_probabilities = {
         "40k": [40000, 0.5],
         }, }
 
+HI_probabilities = {
+    'PH050500000':{
+        "15k": [15000, 0.8],
+        "24.5k": [24500, 0.7],
+        "36k": [36000, 0.5]
+        }
+}
+
+
 #### PAR SETTINGS
 '''
 This is the smallest and innermost monitoring domain, whose boundary is closest to the Philippine Islands.

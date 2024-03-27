@@ -80,6 +80,7 @@ class Forecast:
         self.dref_probabilities_10=dref_probabilities_10
         self.cerf_probabilities=cerf_probabilities
         self.START_probabilities=START_probabilities
+        self.HI_probabilities=HI_probabilities
 
         admin = gpd.read_file(
             ADMIN_PATH
@@ -979,7 +980,8 @@ class Forecast:
         # ------------------------ calculate and plot probability National -----------------------------------
         eap_status_bool=self.drefTriggerCheck(typhoon_names,df_impact_forecast) 
         self.cerfTriggerCheck(typhoon_names,df_impact_forecast)  
-        self.startTriggerCheck(typhoon_names,df_impact_forecast)       
+        self.startTriggerCheck(typhoon_names,df_impact_forecast)    
+        self.hiTriggerCheck(typhoon_names,df_impact_forecast)      
         
         
         #eap_status_bool=0
@@ -1361,6 +1363,55 @@ class Forecast:
                                                  3: "Predicted Probability"}).to_csv(json_file_path)
             
 
+    def hiTriggerCheck(self,typhoon_names,df_impact_forecast):
+        #HI Trigger Status 
+        df_impact_forecast=df_impact_forecast.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last') 
+        start_trigger_status = {}
+
+        # Only select 1 HI region
+     
+        provinces_names={'PH050500000':'Albay'}   
+        df_impact_forecast['Prov_Code']=df_impact_forecast.apply(lambda x:str(x.Mun_Code[:6])+'00000',axis=1)
+        
+        df_impact_forecast_start=df_impact_forecast.query('Prov_Code in @provinces_names.keys()')
+        
+        if not df_impact_forecast_start.empty:       
+            for provinces in provinces_names.keys():
+                triggers=self.START_probabilities[provinces]
+                prov_name=provinces_names[provinces]
+                df_trig=df_impact_forecast.query('Prov_Code==@provinces')
+                
+                if not df_trig.empty:  
+                    probability_impact2=df_trig.groupby(['ens_id']).agg(
+                        NUmber_of_affected_municipality=('Mun_Code','count'),
+                        average_ML_Model=('Damage_predicted', 'mean'),
+                        Total_affected_ML_Model=('number_affected_pop__prediction', 'sum'),
+                        Total_buildings_ML_Model=('Damage_predicted_num', sum)).sort_values(by='Total_buildings_ML_Model',ascending=False).reset_index()
+                    ######## calculate probability for impact                
+                    
+                    agg_impact_prov = probability_impact2["Total_affected_ML_Model"].values        
+           
+                    
+
+                    for key, values in triggers.items():
+                        trigger_stat_prov = (sum([1 for i in agg_impact_prov if i > values[0]]) /len(agg_impact_prov))  
+                        
+                        trigger_stat_ = trigger_stat_prov > values[1]
+    
+                        start_trigger_status[key] = [prov_name,values[1],trigger_stat_,trigger_stat_prov]
+
+
+            json_file_path = (
+                self.Output_folder + typhoon_names + "_hi_trigger_status" + ".csv"
+            )
+            
+            start_trigger_status=pd.DataFrame.from_dict(start_trigger_status, orient="index").reset_index()
+            
+            start_trigger_status.rename(columns={"index": "Threshold",
+                                                 0: "province",
+                                                 1: "Trigger probability threshold",
+                                                 2: "Trigger status",
+                                                 3: "Predicted Probability"}).to_csv(json_file_path)
         
         
     def windfieldDataHRS(self, typhoons,data,landfall_time_hr,MODEL='HWRF'):
