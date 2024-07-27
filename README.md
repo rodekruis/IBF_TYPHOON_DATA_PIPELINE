@@ -29,7 +29,7 @@ This tool was developed as a trigger mechanism for the typhoon Early action prot
 To run the pipeline, you need access to an Data.zip, and credentiials for 510 Datalake and FTP server. If you or your organization is interested in using the pipeline, 
 please contact [510 Global](https://www.510.global/contact-us/) to obtain the credentials. You will receive a file called `secrets`, which you need to place in the top-level directory.
 
-The main use of this data pipeline is to update the status of Typhoon IBF portal based on the latest ECMWF forecast. The status of Triggered/Not Triggred is defined based on EAP trigger value. Currently this is based on Average impact. This value can be updated the setting.py file [at this line ](https://github.com/rodekruis/IBF_TYPHOON_DATA_PIPELINE/blob/master/IBF-Typhoon-model/src/typhoonmodel/utility_fun/settings.py#L94) Defult value is Average, other possible values are 50,70 and 90 , which is the percentage of ensamble members passing the treshold.
+The main use of this data pipeline is to update the status of Typhoon IBF portal based on the latest ECMWF forecast. The status of Triggered/Not Triggred is defined based on EAP trigger value. Currently this is based on Average impact. This value can be updated the setting.py file [at this line ](https://github.com/rodekruis/IBF_TYPHOON_DATA_PIPELINE/blob/master/IBF-Typhoon-model/src/typhoonmodel/utility_fun/settings.py#L92) Defult value is Average, other possible values are 50,70 and 90 , which is the percentage of ensamble members passing the treshold.
 
 <!-- Installation -->
 ## Installation
