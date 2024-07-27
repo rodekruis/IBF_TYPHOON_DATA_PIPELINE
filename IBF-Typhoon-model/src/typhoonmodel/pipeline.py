@@ -27,26 +27,32 @@ import geopandas as gpd
 import json
 import zipfile
 from climada.hazard import Centroids, TropCyclone,TCTracks
+from climada.hazard.tc_tracks_forecast import TCForecast
 from shapely.geometry import Point, Polygon, MultiPolygon, box
 
 from typhoonmodel.utility_fun import track_data_clean, Check_for_active_typhoon, Sendemail, plot_intensity, initialize
-''' 
+
 if platform == "linux" or platform == "linux2": #check if running on linux or windows os
     from typhoonmodel.utility_fun import Rainfall_data
 elif platform == "win32":
     from typhoonmodel.utility_fun import Rainfall_data_window as Rainfall_data
-'''
 from typhoonmodel.utility_fun.forecast_process import Forecast
-from typhoonmodel.utility_fun.tc_tracks_forecast import TCForecast
 decoder = Decoder()
 import requests
+
 from fiona.crs import from_epsg
 from climada.util import coordinates  
+
 from typhoonmodel.utility_fun.settings import *
+
+
+
 import glob
-from typhoonmodel.utility_fun.dynamicDataDb import DatabaseManager 
+from typhoonmodel.utility_fun.dynamicDataDb import DatabaseManager
+ 
 initialize.setup_logger()
 logger = logging.getLogger(__name__)
+
 
 def main():
     initialize.setup_cartopy()
@@ -61,10 +67,12 @@ def main():
             mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
             mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
             mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
-            mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]            
+            mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
+            
             # Download data 
             #dbm_ = DatabaseManager(countryCodeISO3,admin_level)
-            db = DatabaseManager(countryCodeISO3,admin_level)            
+            db = DatabaseManager(countryCodeISO3,admin_level)
+            
             filename='data.zip'
             path = 'typhoon/Gold/ibfdatapipeline/'+ filename
             #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
@@ -75,7 +83,8 @@ def main():
             path_to_zip_file='./'+filename
             
             with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
-                zip_ref.extractall('./data') 
+                zip_ref.extractall('./data')
+                
             logger.info('finished data download')
             
     
@@ -108,22 +117,14 @@ def main():
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  
                             #EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
-                            #EAP_TRIGGERED=fc.eap_status[typhoon_names]    
-                            logger.info('__________upload data to IBF system_____')                                          
+                            #EAP_TRIGGERED=fc.eap_status[typhoon_names]                                              
                             states=fc.db.postResulToDatalake()
                             forecast_directory=typhoon_names + fc.forecast_time
-                            logger.info('__________upload data to datalack 1_____') 
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
-                            logger.info('__________upload data to datalack 2_____') 
-
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
-                            logger.info('__________upload ty data_____') 
-                            fc.db.uploadTyphoonData(json_path) 
-                            logger.info('__________upload track data_____') 
                             fc.db.uploadTrackData(json_path) 
-                                                        
+                            fc.db.uploadTyphoonData(json_path)                             
                             #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
-
                             fc.db.sendNotificationTyphoon() 
                             try:
                                 if states==1:

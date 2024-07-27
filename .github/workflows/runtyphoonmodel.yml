@@ -28,7 +28,6 @@ jobs:
       ADMIN_LOGIN: ${{ secrets.ADMIN_LOGIN }} 
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD}} 
 
- 
 
     steps:
     - uses: actions/checkout@v2

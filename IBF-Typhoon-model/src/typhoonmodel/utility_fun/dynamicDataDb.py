@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry  
-from datetime import datetime
  
 
 class DatabaseManager:
@@ -32,8 +31,6 @@ class DatabaseManager:
         self.mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
         self.mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
         self.mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
-        current_time = datetime.now()
-        self.uploadTime = current_time.strftime("%Y-%m-%dT%H:%M:%SZ")      
  
  
         #ADMIN_LOGIN=SETTINGS_SECRET[countryCodeISO3]["ADMIN_LOGIN"]
@@ -78,7 +75,6 @@ class DatabaseManager:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
                     #body['adminLevel'] = self.admin_level
-                    body['date'] = self.uploadTime
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
             except requests.exceptions.ReadTimeout:
@@ -91,7 +87,6 @@ class DatabaseManager:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
                     body['leadTime']= '0-hour'
-                    body['date'] = self.uploadTime
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
             except requests.exceptions.ReadTimeout:
@@ -103,7 +98,6 @@ class DatabaseManager:
             try:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
-                    body['date'] = self.uploadTime
                     #body['adminLevel'] = self.admin_level
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
@@ -116,7 +110,6 @@ class DatabaseManager:
                 json_file_path =json_path +f'null_{indicator}' + '.json'
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
-                    body['date'] = self.uploadTime
                     #body['adminLevel'] = self.admin_level
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')            
@@ -133,14 +126,12 @@ class DatabaseManager:
                             'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3  + '_admin_' + str(adminlevels) + '_' + 'population_affected_percentage' + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
-                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info('Uploaded calculated_affected for indicator: ' + 'population_affected_percentage for admin level: ' + str(adminlevels))
                     with open(self.affectedFolder+'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3 + '_admin_' + str(adminlevels) + '_' + indicator + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
-                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info(f'Uploaded calculated_affected for indicator: {indicator}' +'for admin level: ' + str(adminlevels))
@@ -148,7 +139,6 @@ class DatabaseManager:
                     with open(self.affectedFolder +'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3 + '_admin_' + str(adminlevels) + '_' + indicator + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
-                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info(f'Uploaded calculated_affected for indicator: {indicator}' +'for admin level: ' + str(adminlevels))
@@ -159,7 +149,6 @@ class DatabaseManager:
             track_records = json.load(json_file)
         disasterType = self.getDisasterType()
         body=track_records
-        body['date'] = self.uploadTime
         
         '''
         body2={}
@@ -184,8 +173,7 @@ class DatabaseManager:
         with open(json_file_path) as json_file:
             track_records = json.load(json_file)
         disasterType = self.getDisasterType() 
-        track_records['leadTime']= '0-hour'
-        track_records['date'] = self.uploadTime    
+        track_records['leadTime']= '0-hour'    
         self.apiPostRequest('typhoon-track/', body=track_records)
         logger.info(f'Uploaded track_data: {json_file_path}')
         
