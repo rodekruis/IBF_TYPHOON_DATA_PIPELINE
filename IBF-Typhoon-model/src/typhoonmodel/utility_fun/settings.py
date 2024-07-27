@@ -98,6 +98,13 @@ dref_probabilities_10 = {
         }
 
 dref_probabilities = {
+    "80k": [80000, 0.5],
+    "50k": [50000, 0.6],
+    "10k": [10000, 0.8],
+    "5k": [5000, 0.95],
+}
+
+dref_probabilities_old = {
     "100k": [100000, 0.5],
     "80k": [80000, 0.6],
     "70k": [70000, 0.7],
@@ -113,7 +120,7 @@ cerf_probabilities = {
     "5k": [5000, 0.95],
 }               
 
-START_probabilities = {
+START_probabilities_old = {
     'PH166700000':{
         "8k": [8000, 0.8],
         "10k": [10000, 0.8],
@@ -136,6 +143,7 @@ START_probabilities = {
         "40k": [40000, 0.5],
         }, }
 
+
 HI_probabilities = {
     'PH050500000':{
         "15k": [15000, 0.8],
@@ -144,7 +152,30 @@ HI_probabilities = {
         }
 }
 
+provinces_names={'PH166700000':'SurigaoDeLnorte','PH021500000':'Cagayan','PH082600000':'EasternSamar'}   
 
+START_probabilities = {
+    'PH166700000':{ #SurigaoDeLnorte
+        "8k": [8000, 0.8],
+        "17k": [17000, 0.8],
+        "25k": [25000, 0.7],
+        "34k": [34000, 0.5],
+        "37k": [37000, 0.5], 
+        },
+    'PH021500000':{ #Cagayan
+        "35k": [35000, 0.8],
+        "49k": [49000, 0.8],
+        "55k": [55000, 0.7],
+        "59k": [59000, 0.5],
+        "62k": [62000, 0.5], 
+        },
+    'PH082600000':{ #EasternSamar
+        "23k": [23000, 0.8],
+        "42k": [42000, 0.8],
+        "53k": [53000, 0.7],
+        "64k": [64000, 0.5],
+        "70k": [70000, 0.5],
+        }, }
 #### PAR SETTINGS
 '''
 This is the smallest and innermost monitoring domain, whose boundary is closest to the Philippine Islands.
@@ -160,11 +191,12 @@ parBox=[5,115,25,135]
 
 start_time = datetime.now()
 ### to run data pipeline for a specific event
-#ecmwf_remote_directory='20221027000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
+#ecmwf_remote_directory='20230526000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NALGAE']
 
 
 ### to run data pipeline for a specific event
+#ecmwf_remote_directory='20240725120000'
 ecmwf_remote_directory=None
 Active_Typhoon_event_list=[]
 
@@ -197,10 +229,10 @@ data_point = start_time.strftime("%Y%m%d")
 ###################
 
 
-MAIN_DIRECTORY='/home/fbf/'
+#MAIN_DIRECTORY='/home/fbf/'
 
 
-#MAIN_DIRECTORY ='./'# str(Path(__file__).parent.absolute())
+MAIN_DIRECTORY ='./'# str(Path(__file__).parent.absolute())
 
  
 
@@ -208,8 +240,8 @@ MAIN_DIRECTORY='/home/fbf/'
 
 ADMIN_PATH =MAIN_DIRECTORY+'data/gis_data/phl_admin3.geojson'
 ADMIN4_PATH =MAIN_DIRECTORY+'data/gis_data/adm4_centers.geojson'
-
 ADMIN3_PATH = MAIN_DIRECTORY+'data/gis_data/adm3_centers.csv'
+
 maxDistanceFromCoast=2000 # max (km) distance to consider lead time calculation 
 
 PRE_DISASTER_INDICATORS = MAIN_DIRECTORY+'data/pre_disaster_indicators/all_predisaster_indicators.csv'
@@ -226,7 +258,7 @@ ML_model_input = MAIN_DIRECTORY+'data/model_input/df_modelinput_july.csv'
 logoPath = MAIN_DIRECTORY+'/data/logos/combined_logo.png'
 
 
-for dir_path in [Input_folder,Output_folder,rainfall_path]:
+for dir_path in [Input_folder,Output_folder,rainfall_path,ECMWF_folder]:
     if os.path.exists(dir_path):
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)

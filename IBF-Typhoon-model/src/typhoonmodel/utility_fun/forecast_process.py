@@ -1,6 +1,7 @@
 import time
 import ftplib
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from sys import platform
@@ -23,30 +24,28 @@ from shapely import wkb, wkt
 from shapely.geometry import Point, Polygon
 from pathlib import Path
 from climada.hazard import Centroids, TropCyclone, TCTracks
-from climada.hazard.tc_tracks_forecast import TCForecast
+#from climada.hazard.tc_tracks_forecast import TCForecast
+from typhoonmodel.utility_fun.tc_tracks_forecast import TCForecast
 from typhoonmodel.utility_fun.settings import *
 from typhoonmodel.utility_fun.dynamicDataDb import DatabaseManager
 from climada.util import coordinates 
+
 from typhoonmodel.utility_fun import (
     track_data_clean,
     Check_for_active_typhoon,
     Sendemail,
-    #ucl_data,
     plot_intensity,
     initialize,
 )
 
-if (
-    platform == "linux" or platform == "linux2"
-):  # check if running on linux or windows os
+if platform in ["linux", "linux2"]:
     from typhoonmodel.utility_fun import Rainfall_data
 elif platform == "win32":
     from typhoonmodel.utility_fun import Rainfall_data_window as Rainfall_data
+
 decoder = Decoder()
 initialize.setup_logger()
 logger = logging.getLogger(__name__)
-
-
 
 
 class Forecast:
@@ -62,55 +61,41 @@ class Forecast:
         self.ECMWF_SLEEP = 30  # s
         self.main_path = MAIN_DIRECTORY
         self.Input_folder = Input_folder
+        self.ECMWF_folder=ECMWF_folder
         self.rainfall_path = rainfall_path
         self.Active_Typhoon_event_list=Active_Typhoon_event_list
         self.Output_folder = Output_folder
         self.EAPTrigger=EAPTrigger        
         self.Show_Areas_on_IBF_radius=Show_Areas_on_IBF_radius
-        ##Create grid points to calculate Winfield
         cent = Centroids()
         cent.set_raster_from_pnt_bounds((118, 6, 127, 19), res=0.05)
         cent.check()
-        #cent.plot()
         self.cent=cent
         self.ECMWF_CORRECTION_FACTOR=ECMWF_CORRECTION_FACTOR
-        self.ECMWF_LATENCY_LEADTIME_CORRECTION=ECMWF_LATENCY_LEADTIME_CORRECTION
-        
+        self.ECMWF_LATENCY_LEADTIME_CORRECTION=ECMWF_LATENCY_LEADTIME_CORRECTION        
         self.dref_probabilities=dref_probabilities
         self.dref_probabilities_10=dref_probabilities_10
         self.cerf_probabilities=cerf_probabilities
         self.START_probabilities=START_probabilities
         self.HI_probabilities=HI_probabilities
+  
 
-        admin = gpd.read_file(
-            ADMIN_PATH
-        )  # gpd.read_file(os.path.join(self.main_path,"data/gis_data/phl_admin3_simpl2.geojson"))
-        admin4 = gpd.read_file(
-            ADMIN4_PATH
-        ) 
-        admin3 = pd.read_csv(
-            ADMIN3_PATH
-        ) 
+        admin = gpd.read_file(ADMIN_PATH)  # gpd.read_file(os.path.join(self.main_path,"data/gis_data/phl_admin3_simpl2.geojson"))
+        admin4 = gpd.read_file(ADMIN4_PATH) 
+        admin3 = pd.read_csv(ADMIN3_PATH) 
                   
-        pcode = pd.read_csv(
-            os.path.join(self.main_path, "data/pre_disaster_indicators/pcode.csv")
-        )
+        pcode = pd.read_csv(os.path.join(self.main_path, "data/pre_disaster_indicators/pcode.csv"))
         
-        Tphoon_EAP_Areas = pd.read_csv(
-            os.path.join(self.main_path, "data/Tphoon_EAP_Areas.csv")
-            )
+        Tphoon_EAP_Areas = pd.read_csv(os.path.join(self.main_path, "data/Tphoon_EAP_Areas.csv"))
         
         self.Tphoon_EAP_Areas = Tphoon_EAP_Areas
         self.pre_disaster_inds = self.pre_disaster_data()
         self.pcode = pcode
         
         df = pd.DataFrame(data=cent.coord) 
-        df["centroid_id"] = "id" + (df.index).astype(str)
-        
-        centroid_idx = df["centroid_id"].values
-        
-        ## sometimes there is a problem to correctly generate datafram from centroids 
-        ## temporary fix for this is to read the datafram from file 
+        df["centroid_id"] = "id" + (df.index).astype(str)        
+        centroid_idx = df["centroid_id"].values    
+
         
         if len(centroid_idx)==0:
             df = gpd.read_file(CENTROIDS_PATH)
@@ -130,6 +115,7 @@ class Forecast:
         self.admin = admin
         self.admin4 = admin4
         self.admin3 = admin3
+        
         self.maxDistanceFromCoast = maxDistanceFromCoast
         self.data_filenames_list = {}
         self.image_filenames_list = {}
@@ -144,7 +130,8 @@ class Forecast:
         self.longtiude_limit_leadtime=longtiude_limit_leadtime
         self.forecastTime=forecastTime
         self.logoPath=logoPath
-        
+        current_time = datetime.now()
+        self.uploadTime = current_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Sometimes the ECMWF ftp server complains about too many requests
         # This code allows several retries with some sleep time in between
@@ -156,12 +143,86 @@ class Forecast:
         ####################################################################
         n_tries = 0
 
+        # list to store cyclone events 
+        TropicalCycloneAdvisoryDomain_events=[]
+
         while True:
             try:
                 logger.info("Downloading ECMWF typhoon tracks")
-                bufr_files = TCForecast.fetch_bufr_ftp(remote_dir=self.remote_dir)
-                fcast = TCForecast()
-                fcast.fetch_ecmwf(files=bufr_files)
+                bufr_files = TCForecast.fetch_bufr_ftp(target_dir=self.ECMWF_folder,remote_dir=self.remote_dir)
+                #
+                bufr_files_par=[]
+                for file_path in  bufr_files:
+                    files=os.path.basename(file_path)
+                    items=files.split('_')[-2]
+                    result = [substring for substring in items.split('p') for substring in substring.split('deg')] 
+                    result = [s for s in result if s] 
+                    lat=int(result[0])
+                    items=files.split('_')[-3]
+                    result = [substring for substring in items.split('p') for substring in substring.split('deg')] 
+                    result = [s for s in result if s] 
+                    lon=int(result[0])
+                    bounds = (5, 21.0, 115.0, 140.0)  #  bounds (min_lat, max_lat, min_lon, max_lon)
+
+                    # Check if the point is within the bounds
+                    if self.is_point_in_bounds(lat,lon,bounds):
+                        bufr_files_par.append(file_path)
+                        logger.info(f" : {files} is data for a cyclone in PAR region")
+
+                if bufr_files_par !=[]:
+                    logger.info(f" is data for a cyclone in PAR region")
+                    fcast = TCForecast()
+                    fcast.fetch_ecmwf(files=bufr_files_par)
+                    
+                    FcastData = [tr for tr in fcast.data if (tr.basin =="W - North West Pacific")]
+
+                    ## to do replace this wth parBox=[5,115,25,135]
+
+                    """
+                    filter data downloaded in the above step for active typhoons  in PAR
+                    https://bagong.pagasa.dost.gov.ph/learning-tools/philippine-area-of-responsibility
+                    : 4°N 114°E, 28°N 114°E, 28°N 145°E and 4°N 145°N
+                    """
+                    ####################################################################
+
+                    ###CHCECK FOR ACTIVE EVENTS IN PAR
+
+                    ####################################################################
+                    
+                    TropicalCycloneAdvisoryDomain_events = list(
+                        set(
+                            [
+                                tr.name
+                                for tr in FcastData
+                                if ( 
+                                    sum(~np.isnan(tr.max_sustained_wind.values))> sum(np.isnan(tr.max_sustained_wind.values)) 
+                                    and np.nanmin(tr.lat.values) < 21
+                                    and np.nanmax(tr.lat.values) > 5
+                                    and np.nanmin(tr.lon.values) < 135
+                                    and np.nanmax(tr.lon.values) > 115
+                                    and tr.is_ensemble == "False"
+                                )
+                            ]
+                        )
+                    )                    
+                    self.TropicalCycloneAdvisoryDomain_events=TropicalCycloneAdvisoryDomain_events
+                    
+                    #FcastData = [tr for tr in FcastData if (tr.is_ensemble == "False")] limit running in azure logic
+                    if High_resoluation_only_Switch:
+                        Data_to_process = [tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events and tr.is_ensemble == "False")]
+                    else:
+                        Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]        
+                    
+
+                    fcast_data = [
+                        track_data_clean.track_data_clean(tr)
+                        for tr in Data_to_process
+                        if (tr.time.size > 1)
+                    ]
+
+                    self.fcast_data = fcast_data                     
+                       
+
             except ftplib.all_errors as e:
                 n_tries += 1
                 if n_tries >= self.ECMWF_MAX_TRIES:
@@ -177,17 +238,13 @@ class Forecast:
                 continue
             break
         
-        ####################################################################
-        ####################################################################
-        ###STEP 2 CHCECK FOR ACTIVE EVENTS IN PAR
-        #####################################################################
-        ####################################################################
+ 
         """
         filter data downloaded in the above step for active typhoons  in PAR
         https://bagong.pagasa.dost.gov.ph/learning-tools/philippine-area-of-responsibility
         : 4°N 114°E, 28°N 114°E, 28°N 145°E and 4°N 145°N
         """
-        
+        '''
         FcastData = [tr for tr in fcast.data if (tr.basin =="W - North West Pacific")]
         ## to do replace this wth parBox=[5,115,25,135]
         
@@ -214,16 +271,14 @@ class Forecast:
         if High_resoluation_only_Switch:
             Data_to_process = [tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events and tr.is_ensemble == "False")]
         else:
-            Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]         
-        
-
+            Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]                 
         fcast_data = [
             track_data_clean.track_data_clean(tr)
             for tr in Data_to_process
             if (tr.time.size > 1)
         ]
-
         self.fcast_data = fcast_data
+        '''
         
 
         if TropicalCycloneAdvisoryDomain_events != []:
@@ -258,8 +313,8 @@ class Forecast:
                 Active_Typhoon_events=self.Active_Typhoon_event_list
             else:
                 Active_Typhoon_events=TropicalCycloneAdvisoryDomain_events
-     
-            for typhoons in Active_Typhoon_events:
+            Active_Typhoon_events1 = [item for item in Active_Typhoon_events if not item[0].isdigit()]
+            for typhoons in Active_Typhoon_events1:
                 
                 logger.info(f"Processing data {typhoons}")                   
                 HRS = [ tr  for tr in self.fcast_data  if (tr.is_ensemble=='False' and tr.name in [typhoons]) ]
@@ -328,6 +383,11 @@ class Forecast:
     #########################################   
     def min_distance(self,point, lines):
         return lines.distance(point).min()
+    
+    def is_point_in_bounds(self,lat, lon,bounds):
+
+        min_lat, max_lat, min_lon, max_lon = bounds
+        return min_lat <= lat <= max_lat and min_lon <= lon <= max_lon
 
     def model(self, df_total):
         from sklearn.model_selection import (
@@ -449,9 +509,11 @@ class Forecast:
         df_total.loc[df_total['HAZ_dis_track_min'] > self.Wind_damage_radius, 'Damage_predicted'] = 0 # 
         
         df_total["dist_50"] = df_total["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+
         probability_impact=df_total.groupby('Mun_Code').agg(
                                     dist50k=('dist_50', sum),
                                     Num_ens=('dist_50', 'count')).reset_index()
+        
         probability_impact["prob_within_50km"] = probability_impact.apply(lambda x: x.dist50k/x.Num_ens,axis=1)
 
 
@@ -786,6 +848,7 @@ class Forecast:
                     "leadTime": landfall_time_hr,
                     "eventName": typhoons,
                     "trackpointDetails": exposure_place_codes,
+                    "date": self.uploadTime,
                 }
             with open(json_file_path, "w") as fp:
                 json.dump(track_records, fp)
@@ -872,8 +935,18 @@ class Forecast:
         df_impact_forecast["Damage_predicted_num"] = df_impact_forecast["Damage_predicted_num"].astype("int")   
         
         df_impact_forecast["number_affected_pop__prediction"] = df_impact_forecast["number_affected_pop__prediction"].astype("int") 
+
+        df_impact_forecast["dist_50"] = df_impact_forecast["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+
+        probability_dist1=df_impact_forecast.groupby('Mun_Code').agg(dist50k=('dist_50', 'sum')).reset_index()
+            
+        #probability_dist1["prob_within_50km"] = probability_dist1.apply(lambda x: x.dist50k/50,axis=1) 
         
+
+
         impact = df_impact_forecast.copy()
+
+        
         
         check_ensamble=False
         impact_HRS = impact.query("is_ensamble==@check_ensamble").filter(["Damage_predicted","Mun_Code",
@@ -981,7 +1054,7 @@ class Forecast:
         eap_status_bool=self.drefTriggerCheck(typhoon_names,df_impact_forecast) 
         self.cerfTriggerCheck(typhoon_names,df_impact_forecast)  
         self.startTriggerCheck(typhoon_names,df_impact_forecast)    
-        self.hiTriggerCheck(typhoon_names,df_impact_forecast)      
+        self.hiTriggerCheck(typhoon_names,df_impact_forecast)     
         
         
         #eap_status_bool=0
@@ -1225,6 +1298,7 @@ class Forecast:
         else:
             trigger_stat_dref10 =0
         logger.info('finished  calculating trigger threshold')    
+        
         EAP_TRIGGERED = "no"
         eap_status_bool=0
         Trigger_status=True
@@ -1328,7 +1402,8 @@ class Forecast:
             for provinces in provinces_names.keys():#['PH166700000','PH021500000','PH082600000']:
                 triggers=self.START_probabilities[provinces]
                 prov_name=provinces_names[provinces]
-                df_trig=df_impact_forecast.query('Prov_Code==@provinces')
+                new_df=df_impact_forecast.copy()
+                df_trig=new_df.query('Prov_Code==@provinces')
                 
                 if not df_trig.empty:  
                     probability_impact2=df_trig.groupby(['ens_id']).agg(
@@ -1366,18 +1441,19 @@ class Forecast:
     def hiTriggerCheck(self,typhoon_names,df_impact_forecast):
         #HI Trigger Status 
         df_impact_forecast=df_impact_forecast.sort_values('Damage_predicted').drop_duplicates(subset=['Mun_Code', 'ens_id'], keep='last') 
-        start_trigger_status = {}
+        HI_trigger_status = {}
 
         # Only select 1 HI region
      
         provinces_names={'PH050500000':'Albay'}   
         df_impact_forecast['Prov_Code']=df_impact_forecast.apply(lambda x:str(x.Mun_Code[:6])+'00000',axis=1)
         
-        df_impact_forecast_start=df_impact_forecast.query('Prov_Code in @provinces_names.keys()')
+        df_impact_forecast_hi=df_impact_forecast.query('Prov_Code in @provinces_names.keys()')
+        json_file_path = (self.Output_folder + typhoon_names + "_hi_trigger_status" + ".csv")
         
-        if not df_impact_forecast_start.empty:       
+        if not df_impact_forecast_hi.empty:       
             for provinces in provinces_names.keys():
-                triggers=self.START_probabilities[provinces]
+                triggers=self.HI_probabilities[provinces]
                 prov_name=provinces_names[provinces]
                 df_trig=df_impact_forecast.query('Prov_Code==@provinces')
                 
@@ -1398,21 +1474,16 @@ class Forecast:
                         
                         trigger_stat_ = trigger_stat_prov > values[1]
     
-                        start_trigger_status[key] = [prov_name,values[1],trigger_stat_,trigger_stat_prov]
-
-
-            json_file_path = (
-                self.Output_folder + typhoon_names + "_hi_trigger_status" + ".csv"
-            )
-            
-            start_trigger_status=pd.DataFrame.from_dict(start_trigger_status, orient="index").reset_index()
-            
-            start_trigger_status.rename(columns={"index": "Threshold",
+                        HI_trigger_status[key] = [prov_name,values[1],trigger_stat_,trigger_stat_prov]   
+            HI_trigger_status=pd.DataFrame.from_dict(HI_trigger_status, orient="index").reset_index()
+            HI_trigger_status.rename(columns={"index": "Threshold",
                                                  0: "province",
                                                  1: "Trigger probability threshold",
                                                  2: "Trigger status",
-                                                 3: "Predicted Probability"}).to_csv(json_file_path)
-        
+                                                 3: "Predicted Probability"}).to_csv(json_file_path) 
+        else:
+            pd.DataFrame(columns=['Threshold', 'province', 'Trigger probability threshold','Trigger status','Predicted Probability']).to_csv(json_file_path,index=False)
+
         
     def windfieldDataHRS(self, typhoons,data,landfall_time_hr,MODEL='HWRF'):
         
@@ -1471,40 +1542,6 @@ class Forecast:
         wind_tracks_hrs = typhoon_tracks[["lon", "lat", "timestampOfTrackpoint","HH","VMAX"]]
         wind_tracks_hrs.dropna(inplace=True)    
         wind_tracks_hrs = wind_tracks_hrs.round(2)
-        
-
-        '''
-        if not wind_tracks_hrs.empty:    
-            wind_tracks_hrs['KPH']=wind_tracks_hrs.apply(lambda x: self.ECMWF_CORRECTION_FACTOR*3.6*x.VMAX,axis=1)
-            bins = [0,62,88, 117, 185, np.inf]
-            catagories = ['TD', 'TS', 'STS', 'TY', 'STY']
-
-            wind_tracks_hrs['catagories'] = pd.cut(wind_tracks_hrs['KPH'], bins, labels=catagories)
-            exposure_place_codes=[]
-            
-            for ix, row in wind_tracks_hrs.iterrows():
-                if row["HH"] in ['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00']:                        
-                    exposure_entry = {
-                        "lat": row["lat"],
-                        "lon": row["lon"],
-                        "windspeed":int(row["KPH"]),
-                        "category":row["catagories"],
-                        "timestampOfTrackpoint": row["timestampOfTrackpoint"],
-                    }
-                    exposure_place_codes.append(exposure_entry)
-
-            json_file_path = self.Output_folder + typhoons + "_tracks" + ".json"
-            
-            track_records = {
-                "countryCodeISO3": "PHL",
-                "leadTime": landfall_time_hr,
-                "eventName": typhoons,
-                "trackpointDetails": exposure_place_codes,
-            }
-
-            with open(json_file_path, "w") as fp:
-                json.dump(track_records, fp)
-        '''                    
 
         # calculate wind field for each ensamble members      
         list_intensity = []
@@ -1550,21 +1587,30 @@ class Forecast:
             for index, row in self.dfGrids.iterrows():
                 dist=np.min(np.sqrt(np.square(tr.lat.values-row['lat'])+np.square(tr.lon.values-row['lon'])))
                 distan_track1.append(dist*111)
+
             dist_tr = pd.DataFrame({'centroid_id': self.centroid_idx,'value': distan_track1})
+
             dist_tr = (pd.merge(dist_tr, self.df_admin, how='outer', on='centroid_id')
                         .dropna()
                         .groupby(['adm3_pcode'], as_index=False)
                         .agg({'value': 'min'}))
+            
             dist_tr.columns = [x for x in ['adm3_pcode', 'dis_track_min']]  # join_left_df_.columns.ravel()]
             dist_tr['storm_id'] = tr.sid	
+            dist_tr['ens_id'] =tr.sid + "_" + str(tr.ensemble_number)
+
             distan_track.append(dist_tr)
             
         df_intensity_ = pd.concat(list_intensity)
         distan_track_f = pd.concat(distan_track)
-        distan_track_f2=distan_track_f.groupby(['adm3_pcode','storm_id']).agg(dis_track_min=('dis_track_min', 'min')).reset_index()
+        
+        distan_track_f2=distan_track_f.groupby(['adm3_pcode','ens_id']).agg(dis_track_min=('dis_track_min', 'min')).reset_index()
+
+        #distan_track_f2=distan_track_f.groupby(['adm3_pcode','storm_id']).agg(dis_track_min=('dis_track_min', 'min')).reset_index()
                     
         
-        typhhon_df =  pd.merge(df_intensity_, distan_track_f2,  how='left', on=['adm3_pcode','storm_id'])
+        typhhon_df =  pd.merge(df_intensity_, distan_track_f2,  how='left', on=['adm3_pcode','ens_id'])
+        #typhhon_df =  pd.merge(df_intensity_, distan_track_f2,  how='left', on=['adm3_pcode','storm_id'])
         
 
         if not typhhon_df.empty: #if len(typhhon_df.index > 1):
@@ -1577,10 +1623,16 @@ class Forecast:
             typhhon_df.to_csv( os.path.join(self.Input_folder, f"{typhoons}_windfield.csv"),index=False)
             
             typhhon_wind_data = typhhon_df.copy()
+
+            typhhon_wind_data["dist_50"] = typhhon_wind_data["HAZ_dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+
+       
+            
                             
-            probability_dist=typhhon_wind_data.groupby('adm3_pcode').agg(dist50k=('HAZ_dis_track_min', 'sum'),
+            probability_dist=typhhon_wind_data.groupby('adm3_pcode').agg(dist50k=('dist_50', 'sum'),
                                                                     windspeed=('HAZ_v_max', 'mean'), 
                                                                     Num_ens=('HAZ_dis_track_min', 'count')).reset_index()
+            
             probability_dist["prob_within_50km"] = probability_dist.apply(lambda x: x.dist50k/x.Num_ens,axis=1) 
             
             df_total_upload = pd.merge(self.pcode,
@@ -1616,6 +1668,7 @@ class Forecast:
         
         elif not distan_track_f2.empty:
             distan_track_f2["dist_50"] = distan_track_f2["dis_track_min"].apply(lambda x: 1 if x < 50 else 0)
+
             probability_dist=distan_track_f2.groupby('adm3_pcode').agg(
                             dist50k=('dist_50', 'sum'),
                             aver_dis=('dist_50', 'mean'),
