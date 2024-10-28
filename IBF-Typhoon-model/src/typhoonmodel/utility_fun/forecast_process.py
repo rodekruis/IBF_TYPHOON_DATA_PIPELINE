@@ -38,10 +38,7 @@ from typhoonmodel.utility_fun import (
     initialize,
 )
 
-if platform in ["linux", "linux2"]:
-    from typhoonmodel.utility_fun import Rainfall_data
-elif platform == "win32":
-    from typhoonmodel.utility_fun import Rainfall_data_window as Rainfall_data
+from typhoonmodel.utility_fun import Rainfall_data
 
 decoder = Decoder()
 initialize.setup_logger()
@@ -340,7 +337,7 @@ class Forecast:
                         
                 else:
                     is_land_fall=-1                     
-                if  is_land_fall in [1,3]:# 1 on track to landfall , 3 will pass next to land                
+                if  is_land_fall in [1,3,2,5]:# 1 on track to landfall , 3 will pass next to land     2, made landfall, 5 already passed next to land            
                     #check if calculated wind fields are empty 
                     logger.info(f'{typhoons}event didnt made landfall yet')
                     self.Activetyphoon_landfall[typhoons]='notmadelandfall'                     
