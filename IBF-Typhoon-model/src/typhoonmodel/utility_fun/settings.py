@@ -194,25 +194,29 @@ start_time = datetime.now()
 #ecmwf_remote_directory='20230526000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NALGAE']
 
-
+ 
 ### to run data pipeline for a specific event
-#ecmwf_remote_directory='20240725120000'
+#ecmwf_remote_directory='20241113180000'
+
 ecmwf_remote_directory=None
 Active_Typhoon_event_list=[]
 
 High_resoluation_only_Switch=False
 
 if ecmwf_remote_directory==None:
-    forecastTime=datetime.utcnow()
+    forecastTime = datetime.utcnow()
+    uploadTime = datetime.now()
+    uploadTime = uploadTime.strftime("%Y-%m-%dT%H:%M:%SZ")
 else:
-    forecastTime=datetime.strptime(ecmwf_remote_directory, "%Y%m%d%H%M%S")
+    forecastTime = datetime.strptime(ecmwf_remote_directory, "%Y%m%d%H%M%S")
+    uploadTime = forecastTime.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 typhoon_event_name=None
 
 ECMWF_CORRECTION_FACTOR=1
 
-ECMWF_LATENCY_LEADTIME_CORRECTION=10 
+ECMWF_LATENCY_LEADTIME_CORRECTION=8 
 longtiude_limit_leadtime=120 # if track pass this point consider it has made landfall 
 
 WIND_SPEED_THRESHOLD=0
@@ -261,9 +265,8 @@ logoPath = MAIN_DIRECTORY+'/data/logos/combined_logo.png'
 for dir_path in [Input_folder,Output_folder,rainfall_path,ECMWF_folder]:
     if os.path.exists(dir_path):
         shutil.rmtree(dir_path)
-        os.makedirs(dir_path)
-    else:
-        os.makedirs(dir_path)
+    os.makedirs(dir_path)
+
 
 
 readmefilePath=os.path.join(Output_folder, "readme.txt")

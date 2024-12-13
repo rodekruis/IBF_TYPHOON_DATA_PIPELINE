@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry  
- 
+logging.getLogger("requests").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 class DatabaseManager:
 
@@ -31,7 +32,10 @@ class DatabaseManager:
         self.mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
         self.mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
         self.mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
- 
+        
+        self.uploadTime = uploadTime
+
+
  
         #ADMIN_LOGIN=SETTINGS_SECRET[countryCodeISO3]["ADMIN_LOGIN"]
         #ADMIN_PASSWORD=SETTINGS_SECRET[countryCodeISO3]["ADMIN_PASSWORD"]
@@ -75,6 +79,7 @@ class DatabaseManager:
             try:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
+                    body['date'] = self.uploadTime
                     #body['adminLevel'] = self.admin_level
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
@@ -88,6 +93,7 @@ class DatabaseManager:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
                     body['leadTime']= '0-hour'
+                    body['date'] = self.uploadTime
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
             except requests.exceptions.ReadTimeout:
@@ -100,6 +106,7 @@ class DatabaseManager:
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
                     #body['adminLevel'] = self.admin_level
+                    body['date'] = self.uploadTime
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')
             except requests.exceptions.ReadTimeout:
@@ -111,6 +118,7 @@ class DatabaseManager:
                 json_file_path =json_path +f'null_{indicator}' + '.json'
                 with open(json_file_path) as json_file:
                     body = json.load(json_file)
+                    body['date'] = self.uploadTime
                     #body['adminLevel'] = self.admin_level
                     self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)                     
                 logger.info(f'Uploaded data for indicator: {indicator} ')            
@@ -127,12 +135,14 @@ class DatabaseManager:
                             'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3  + '_admin_' + str(adminlevels) + '_' + 'population_affected_percentage' + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
+                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info('Uploaded calculated_affected for indicator: ' + 'population_affected_percentage for admin level: ' + str(adminlevels))
                     with open(self.affectedFolder+'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3 + '_admin_' + str(adminlevels) + '_' + indicator + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
+                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info(f'Uploaded calculated_affected for indicator: {indicator}' +'for admin level: ' + str(adminlevels))
@@ -140,6 +150,7 @@ class DatabaseManager:
                     with open(self.affectedFolder +'affected_' + self.leadTimeLabel + '_' + self.countryCodeISO3 + '_admin_' + str(adminlevels) + '_' + indicator + '.json') as json_file:
                         body = json.load(json_file)
                         body['disasterType'] = self.getDisasterType()
+                        body['date'] = self.uploadTime
                         #body['adminLevel'] = self.admin_level
                         self.apiPostRequest('admin-area-dynamic-data/exposure', body=body)
                     logger.info(f'Uploaded calculated_affected for indicator: {indicator}' +'for admin level: ' + str(adminlevels))
@@ -150,6 +161,7 @@ class DatabaseManager:
             track_records = json.load(json_file)
         disasterType = self.getDisasterType()
         body=track_records
+        body['date'] = self.uploadTime
         
         '''
         body2={}
@@ -428,6 +440,9 @@ class DatabaseManager:
         except Exception as e:
             print(e) 
             
+    
+    
+
     def postResulToDatalake(self):
         import requests
         import datetime
@@ -449,12 +464,14 @@ class DatabaseManager:
             container_name='ibftyphoonforecast/'
             file_system_client = service_client.get_file_system_client(file_system=container_name)
             directory_name= 'ibf_model_results' 
+
             filename=self.Output_folder + 'model_outputs'
+
             dir_client = file_system_client.get_directory_client(directory_name)
             dir_client.create_directory()
             
 
-            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip', lambda name : 'csv' in name)
+            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip')#, lambda name : 'csv' in name)
             
             time.sleep(10) # Sleep for 10 seconds
              
@@ -479,17 +496,16 @@ class DatabaseManager:
         channel = sk.chats.chat(channel_id) 
         channel.sendMsg(msg)
                
-    def zipFilesInDir(self,dirName, zipFileName, filter):
+    def zipFilesInDir(self,dirName, zipFileName):
         from zipfile import ZipFile
         import os
         from os.path import basename       
-        files = [ fi for fi in os.listdir(dirName) if not fi.endswith(".json") ]
+        #files = [ fi for fi in os.listdir(dirName) if not fi.endswith(".json") ]
+        files_to_zip = [fi for fi in os.listdir(dirName) if not (fi.endswith(".json") or fi.endswith(".zip"))]
         with ZipFile(zipFileName, 'w') as zipObj: # create a ZipFile object            
-            for filename in files:#os.listdir(dirName): # Iterate over all the files in directory
-                #if filter(filename):
+            for filename in files_to_zip:#os.listdir(dirName): # Iterate over all the files in directory
                 filePath = os.path.join(dirName, filename)
-                # Add file to zip
-                zipObj.write(filePath, basename(filePath))
+                zipObj.write(filePath, arcname=filename)#                zipObj.write(filePath, basename(filePath))
     
     def uploadImage(self,typhoons,eventName='no-name'):
         disasterType = self.getDisasterType()

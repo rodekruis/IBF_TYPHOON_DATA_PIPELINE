@@ -44,6 +44,9 @@ def download_rainfall_nomads( no_data_value=29999):
 
     url_base = 'https://nomads.ncep.noaa.gov/pub/data/nccf/com/naefs/prod/gefs.'
 
+    #url1 = f"{url_base}{data_point}/"  # Use the timestamp of the input folder for the query
+    #url2 = f"{url_base}{Alternative_data_point}/"  # Yesterday's date
+
 
     try:
         logger.info("Trying to get rainfall from today's date")
@@ -100,10 +103,16 @@ def download_rainfall_nomads( no_data_value=29999):
     logger.info("saved processed rainfall file to csv")
     df_rain.to_csv(os.path.join(rainfall_path, "rain_data.csv"), index=False)
     
+    #df_rain = pd.concat(list_df,axis=1, ignore_index=True) 
+    #df_rain.columns = ["max_"+time_itr+"h_rain" for time_itr in RAINFALL_TIME_STEP]
+    #df_rain['Mun_Code']=list(admin['adm3_pcode'].values)
+    #df_rain.to_csv(os.path.join(Input_folder, "rainfall/rain_data.csv"), index=False)
+    #logger.info("saved processed rainfall file to csv")
+
 
 def get_grib_files(url, path, rainfall_path, use_cache=True):
     base_urls = []
-    for items in url:
+    for items in url: #listFD(url):
         if url_is_alive(items+'prcp_bc_gb2/'):
             base_urls.append(items)
     base_url = base_urls[-1]
@@ -126,6 +135,14 @@ def get_grib_files(url, path, rainfall_path, use_cache=True):
             continue
 
 
+def listFD(url):
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'html.parser')
+    return [url + node.get('href')
+            for node in soup.find_all('a')
+            if node.get('href').split('/')[-2]
+            in ['00', '06', '12', '18']]
+            
 def zonal_stat_rain(filepath,admin):
     #zonal stats to calculate rainfall per manucipality 
     rain_6h=rasterio.open(filepath) 

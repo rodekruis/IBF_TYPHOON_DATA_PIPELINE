@@ -48,11 +48,18 @@ from typhoonmodel.utility_fun.dynamicDataDb import DatabaseManager
 initialize.setup_logger()
 logger = logging.getLogger(__name__)
 
+# Set root logger to log only ERROR and above
+logging.basicConfig(level=logging.ERROR)
+# Suppress logging from 'requests' and 'urllib3' libraries
+#logging.getLogger("requests").setLevel(logging.WARNING)
+#logging.getLogger("urllib3").setLevel(logging.WARNING)
 def main():
     initialize.setup_cartopy()
     start_time = datetime.now()   
     ############## Defult variables which will be updated if a typhoon is active 
     logger.info('AUTOMATION SCRIPT STARTED')
+    logger.info(f'{IBF_API_URL}')
+    
     #logger.info(f'simulation started at {start_time}')
     try: 
         for countryCodeISO3 in countryCodes:
@@ -104,27 +111,26 @@ def main():
                     for typhoon_names in fc.Activetyphoon_landfall.keys():   
                     #for typhoon_names in fc.Activetyphoon:
                         logger.info(f'_________________upload data for {typhoon_names}______________')
-                        if fc.Activetyphoon_landfall[typhoon_names]=='notmadelandfall':
+                        if fc.Activetyphoon_landfall[typhoon_names] in ['madelandfall','notmadelandfall']:#=='notmadelandfall':
                             # upload data
                             json_path = fc.Output_folder  + typhoon_names  
                             #EAP_TRIGGERED_bool=fc.eap_status_bool[typhoon_names]
                             #EAP_TRIGGERED=fc.eap_status[typhoon_names]    
+                            logger.info('__________upload typhoon data_____') 
+                            fc.db.uploadTyphoonData(json_path) 
+                            logger.info('__________upload track data_____') 
+                            fc.db.uploadTrackData(json_path)
                             logger.info('__________upload data to IBF system_____')                                          
                             states=fc.db.postResulToDatalake()
                             forecast_directory=typhoon_names + fc.forecast_time
-                            logger.info('__________upload data to datalack 1_____') 
+                            logger.info('__________upload data to datalack 1_____')                            
                             fc.db.postDataToDatalake(datalakefolder=forecast_directory)
                             logger.info('__________upload data to datalack 2_____') 
-
                             fc.db.postDataToDatalake(datalakefolder=typhoon_names)
-                            logger.info('__________upload ty data_____') 
-                            fc.db.uploadTyphoonData(json_path) 
-                            logger.info('__________upload track data_____') 
-                            fc.db.uploadTrackData(json_path) 
-                                                        
-                            #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
 
-                            fc.db.sendNotificationTyphoon() 
+
+                            #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
+                            #fc.db.sendNotificationTyphoon() 
                             try:
                                 if states==1:
                                     logger.info('posting to skype')
@@ -132,7 +138,7 @@ def main():
                             except:
                                 pass
                             
-                        elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall':
+                        elif fc.Activetyphoon_landfall[typhoon_names]=='madelandfall_':#'to ignore ':
                             logger.info(f'typhoon{typhoon_names} already made landfall getting data for previous model run')   
                             try:                                                        
                                 fc.db.getDataFromDatalake2(datalakefolder=typhoon_names)                           
@@ -185,7 +191,7 @@ def main():
                             json_path = fc.Output_folder
                             fc.db.uploadTyphoonData_no_event(json_path)
                             #fc.db.uploadTrackData(json_path)   
-            
+                    fc.db.sendNotificationTyphoon()
                 else: ##if there is no active typhoon    
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
