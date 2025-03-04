@@ -160,10 +160,11 @@ def main():
                             logger.info(f'uploadng data for no active Typhoon ') 
                             df_total_upload=fc.pcode.copy()  #data frame with pcodes 
                             typhoon_names='null'
-                            df_total_upload['alert_threshold']=0
+                            df_total_upload['forecast_severity']=0
+                            df_total_upload['forecast_trigger']=0
                             df_total_upload['affected_population']=0  
                             df_total_upload['houses_affected']=0                     
-                            for layer in ["affected_population","houses_affected","alert_threshold"]:
+                            for layer in ["affected_population","houses_affected","forecast_severity","forecast_trigger"]:
                                 exposure_entry=[]
                                 # prepare layer
                                 logger.info(f"preparing data for {layer}")
@@ -196,10 +197,11 @@ def main():
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
-                    df_total_upload['alert_threshold']=0
+                    df_total_upload['forecast_severity']=0
+                    df_total_upload['forecast_trigger']=0
                     df_total_upload['affected_population']=0    
                     df_total_upload['houses_affected']=0                     
-                    for layer in ["affected_population",'houses_affected',"alert_threshold"]:
+                    for layer in ["affected_population",'houses_affected',"forecast_severity","forecast_trigger"]:
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")

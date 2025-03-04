@@ -67,7 +67,7 @@ class DatabaseManager:
         return disasterType
         
     def uploadTyphoonData(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -80,7 +80,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass    
     def uploadTyphoonDataAfterlandfall(self,json_path):  
-        for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -93,7 +93,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass                          
     def uploadTyphoonDataNoLandfall(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -106,7 +106,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass            
     def uploadTyphoonData_no_event(self,json_path):
-        for indicator in ["affected_population","houses_affected","alert_threshold"]: #
+        for indicator in ["affected_population","houses_affected","forecast_severity","forecast_trigger"]: #
             try: 
                 json_file_path =json_path +f'null_{indicator}' + '.json'
                 with open(json_file_path) as json_file:
@@ -378,7 +378,7 @@ class DatabaseManager:
         
         
         
-        for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","affected_population","tracks","rainfall","windspeed"]:
+        for layer in ["prob_within_50km","houses_affected","forecast_severity","forecast_trigger","show_admin_area","affected_population","tracks","rainfall","windspeed"]:
 
             logger.info(f'downlading layer {layer}') 
             
