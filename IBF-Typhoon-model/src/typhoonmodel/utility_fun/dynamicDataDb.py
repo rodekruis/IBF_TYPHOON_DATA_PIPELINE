@@ -47,27 +47,20 @@ class DatabaseManager:
         self.uploadCalculatedAffected()
         self.uploadRasterFile()
     
-    def sendNotificationTyphoon(self):
+    def processEvents(self):
         if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"]:
-            body = {
-                'countryCodeISO3': self.countryCodeISO3,
-                'disasterType': self.getDisasterType(),
-                'date': datetime.now().isoformat() + 'Z'
-                }
-            self.apiPostRequest('notification/send', body=body)
+            path = 'events/process' #default is noNotifications=false
+        else:
+            path = 'events/process?noNotifications=true'
+        
+        body = {
+            'countryCodeISO3': self.countryCodeISO3,
+            'disasterType': self.getDisasterType(),
+            'date': datetime.now().isoformat() + 'Z'
+            }
+        self.apiPostRequest(path, body=body)
             
-            logger.info('email notification sent')
-            
-    def sendNotification(self):
-        leadTimes = SETTINGS[self.countryCodeISO3]['lead_times']
-        max_leadTime = max(leadTimes, key=leadTimes.get)
-
-        if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"] and self.leadTimeLabel == max_leadTime:
-            body = {
-                'countryCodeISO3': self.countryCodeISO3,
-                'disasterType': self.getDisasterType()
-            } 
-            self.apiPostRequest('notification/send', body=body)
+        logger.info('process events instructions sent')
     
     def getDisasterType(self):
         disasterType = "typhoon"

@@ -99,7 +99,7 @@ def main():
                 json_path = mock_data_path  + typhoon_names             
                 db.uploadTrackData(json_path)            
                 db.uploadTyphoonData(json_path)
-                db.sendNotificationTyphoon()
+                db.processEvents()
 
             else:
                 #output_folder=Output_folder
@@ -130,7 +130,7 @@ def main():
 
 
                             #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
-                            #fc.db.sendNotificationTyphoon() 
+                            #fc.db.processEvents() 
                             try:
                                 if states==1:
                                     logger.info('posting to skype')
@@ -191,7 +191,7 @@ def main():
                             json_path = fc.Output_folder
                             fc.db.uploadTyphoonData_no_event(json_path)
                             #fc.db.uploadTrackData(json_path)   
-                    fc.db.sendNotificationTyphoon()
+                    fc.db.processEvents()
                 else: ##if there is no active typhoon    
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
