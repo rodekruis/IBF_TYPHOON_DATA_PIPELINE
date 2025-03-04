@@ -56,7 +56,7 @@ class DatabaseManager:
         body = {
             'countryCodeISO3': self.countryCodeISO3,
             'disasterType': self.getDisasterType(),
-            'date': datetime.now().isoformat() + 'Z'
+            'date': self.uploadTime
             }
         self.apiPostRequest(path, body=body)
             
