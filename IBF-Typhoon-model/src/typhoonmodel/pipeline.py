@@ -228,6 +228,7 @@ def main():
                     #upload typhoon data        
                     json_path = fc.Output_folder
                     fc.db.uploadTyphoonData_no_event(json_path)   
+                    fc.db.processEvents()
                  
            
     except Exception as e:
