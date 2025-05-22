@@ -1042,7 +1042,8 @@ class Forecast:
         impact_df5 = impact_df5.fillna(0)
         
         #impact_df = impact_df.drop_duplicates("Mun_Code")
-        impact_df5["alert_threshold"] = 0
+        impact_df5["forecast_severity"] = 0
+        impact_df5["forecast_trigger"] = 0
         
 
         
@@ -1055,8 +1056,9 @@ class Forecast:
         
         
         #eap_status_bool=0
-        
-        impact_df5["alert_threshold"]=impact_df5.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
+
+        impact_df5["forecast_severity"]=impact_df5.apply(lambda x: 1 if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)        
+        impact_df5["forecast_trigger"]=impact_df5.apply(lambda x: eap_status_bool if (x.Mun_Code in self.Tphoon_EAP_Areas.Mun_Code.values) else 0, axis=1)
 
         #save to file 
         #csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"    
@@ -1114,7 +1116,7 @@ class Forecast:
         #csv_file2 = self.Output_folder + "HRS_Impact_" + typhoon_names + ".csv"
  
         Model_output_data=impact_df5.filter(["adm3_pcode","prob_within_50km","houses_affected",
-                                                         "alert_threshold","show_admin_area","affected_population"])
+                                                         "forecast_severity","forecast_trigger","show_admin_area","affected_population"])
      
         df_total_upload = pd.merge(
             df_hazard2,
@@ -1181,11 +1183,8 @@ class Forecast:
         #typhoon_track = self.hrs_track_data[typhoon_names].copy()
 
         # dynamic layers
-        
-        #df_total_upload = df_total_upload.astype({"prob_within_50km": "int32","houses_affected": "int32","alert_threshold": "int32","show_admin_area": "int32"})
-      
         try:
-            for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","affected_population"]:
+            for layer in ["prob_within_50km","houses_affected","forecast_severity","forecast_trigger","show_admin_area","affected_population"]:
                 # prepare layer
                 logger.info(f"preparing data for {layer}")
                 # exposure_data = {'countryCodeISO3': countrycode}
@@ -1681,7 +1680,8 @@ class Forecast:
             
 
             df_total_upload.fillna(0, inplace=True) 
-            df_total_upload['alert_threshold']=0
+            df_total_upload['forecast_severity']=0
+            df_total_upload['forecast_trigger']=0
             df_total_upload['affected_population']=0   
             df_total_upload['windspeed']=0 
             df_total_upload['houses_affected']=0
@@ -1689,7 +1689,7 @@ class Forecast:
             df_total_upload['show_admin_area']=df_total_upload["aver_dis"].apply(lambda x: 1 if x < 1000 else 0)                
             df_total_upload['rainfall']=0                    
 
-            for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
+            for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","forecast_severity","forecast_trigger"]: #,
                 exposure_entry=[]
                 # prepare layer
                 logger.info(f"preparing data for {layer}")
@@ -1714,7 +1714,8 @@ class Forecast:
                     json.dump(exposure_data, fp)
         else:            
             df_total_upload = self.pcode.cop()            
-            df_total_upload['alert_threshold']=0
+            df_total_upload['forecast_severity']=0     
+            df_total_upload['forecast_trigger']=0
             df_total_upload['prob_within_50km']=0 
             df_total_upload['affected_population']=0   
             df_total_upload['windspeed']=0 
@@ -1722,7 +1723,7 @@ class Forecast:
             df_total_upload['show_admin_area']=1                
             df_total_upload['rainfall']=0                    
 
-            for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","alert_threshold"]: #,
+            for layer in ["windspeed","rainfall", "houses_affected","affected_population","show_admin_area","prob_within_50km","forecast_severity","forecast_trigger"]: #,
                 exposure_entry=[]
                 # prepare layer
                 logger.info(f"preparing data for {layer}")

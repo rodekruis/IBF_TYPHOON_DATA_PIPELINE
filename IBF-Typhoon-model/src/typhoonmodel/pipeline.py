@@ -99,7 +99,7 @@ def main():
                 json_path = mock_data_path  + typhoon_names             
                 db.uploadTrackData(json_path)            
                 db.uploadTyphoonData(json_path)
-                db.sendNotificationTyphoon()
+                db.processEvents()
 
             else:
                 #output_folder=Output_folder
@@ -130,7 +130,7 @@ def main():
 
 
                             #fc.db.uploadImage(typhoons=typhoon_names,eventName=typhoon_names)
-                            #fc.db.sendNotificationTyphoon() 
+                            #fc.db.processEvents() 
                             try:
                                 if states==1:
                                     logger.info('posting to skype')
@@ -160,10 +160,11 @@ def main():
                             logger.info(f'uploadng data for no active Typhoon ') 
                             df_total_upload=fc.pcode.copy()  #data frame with pcodes 
                             typhoon_names='null'
-                            df_total_upload['alert_threshold']=0
+                            df_total_upload['forecast_severity']=0
+                            df_total_upload['forecast_trigger']=0
                             df_total_upload['affected_population']=0  
                             df_total_upload['houses_affected']=0                     
-                            for layer in ["affected_population","houses_affected","alert_threshold"]:
+                            for layer in ["affected_population","houses_affected","forecast_severity","forecast_trigger"]:
                                 exposure_entry=[]
                                 # prepare layer
                                 logger.info(f"preparing data for {layer}")
@@ -191,15 +192,16 @@ def main():
                             json_path = fc.Output_folder
                             fc.db.uploadTyphoonData_no_event(json_path)
                             #fc.db.uploadTrackData(json_path)   
-                    fc.db.sendNotificationTyphoon()
+                    fc.db.processEvents()
                 else: ##if there is no active typhoon    
                     logger.info('no active Typhoon')
                     df_total_upload=fc.pcode  #data frame with pcodes 
                     typhoon_names='null'
-                    df_total_upload['alert_threshold']=0
+                    df_total_upload['forecast_severity']=0
+                    df_total_upload['forecast_trigger']=0
                     df_total_upload['affected_population']=0    
                     df_total_upload['houses_affected']=0                     
-                    for layer in ["affected_population",'houses_affected',"alert_threshold"]:
+                    for layer in ["affected_population",'houses_affected',"forecast_severity","forecast_trigger"]:
                         exposure_entry=[]
                         # prepare layer
                         logger.info(f"preparing data for {layer}")
@@ -226,6 +228,7 @@ def main():
                     #upload typhoon data        
                     json_path = fc.Output_folder
                     fc.db.uploadTyphoonData_no_event(json_path)   
+                    fc.db.processEvents()
                  
            
     except Exception as e:

@@ -47,34 +47,27 @@ class DatabaseManager:
         self.uploadCalculatedAffected()
         self.uploadRasterFile()
     
-    def sendNotificationTyphoon(self):
+    def processEvents(self):
         if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"]:
-            body = {
-                'countryCodeISO3': self.countryCodeISO3,
-                'disasterType': self.getDisasterType(),
-                'date': datetime.now().isoformat() + 'Z'
-                }
-            self.apiPostRequest('notification/send', body=body)
+            path = 'events/process' #default is noNotifications=false
+        else:
+            path = 'events/process?noNotifications=true'
+        
+        body = {
+            'countryCodeISO3': self.countryCodeISO3,
+            'disasterType': self.getDisasterType(),
+            'date': self.uploadTime
+            }
+        self.apiPostRequest(path, body=body)
             
-            logger.info('email notification sent')
-            
-    def sendNotification(self):
-        leadTimes = SETTINGS[self.countryCodeISO3]['lead_times']
-        max_leadTime = max(leadTimes, key=leadTimes.get)
-
-        if SETTINGS_SECRET[self.countryCodeISO3]["notify_email"] and self.leadTimeLabel == max_leadTime:
-            body = {
-                'countryCodeISO3': self.countryCodeISO3,
-                'disasterType': self.getDisasterType()
-            } 
-            self.apiPostRequest('notification/send', body=body)
+        logger.info('process events instructions sent')
     
     def getDisasterType(self):
         disasterType = "typhoon"
         return disasterType
         
     def uploadTyphoonData(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -87,7 +80,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass    
     def uploadTyphoonDataAfterlandfall(self,json_path):  
-        for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -100,7 +93,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass                          
     def uploadTyphoonDataNoLandfall(self,json_path):  
-        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","alert_threshold"]:
+        for indicator in ["windspeed","rainfall", "prob_within_50km","houses_affected","affected_population","show_admin_area","forecast_severity","forecast_trigger"]:
             json_file_path =json_path +f'_{indicator}' + '.json'
             try:
                 with open(json_file_path) as json_file:
@@ -113,7 +106,7 @@ class DatabaseManager:
                 logger.info(f'time out during Uploading data for indicator: {indicator} ')  
                 pass            
     def uploadTyphoonData_no_event(self,json_path):
-        for indicator in ["affected_population","houses_affected","alert_threshold"]: #
+        for indicator in ["affected_population","houses_affected","forecast_severity","forecast_trigger"]: #
             try: 
                 json_file_path =json_path +f'null_{indicator}' + '.json'
                 with open(json_file_path) as json_file:
@@ -385,7 +378,7 @@ class DatabaseManager:
         
         
         
-        for layer in ["prob_within_50km","houses_affected","alert_threshold","show_admin_area","affected_population","tracks","rainfall","windspeed"]:
+        for layer in ["prob_within_50km","houses_affected","forecast_severity","forecast_trigger","show_admin_area","affected_population","tracks","rainfall","windspeed"]:
 
             logger.info(f'downlading layer {layer}') 
             
