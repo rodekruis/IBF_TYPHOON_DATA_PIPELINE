@@ -438,7 +438,7 @@ class DatabaseManager:
 
     def postResulToDatalake(self):
         import requests
-        import datetime
+        import datetime as dt
         import hmac
         import hashlib
         import base64
@@ -459,12 +459,12 @@ class DatabaseManager:
             )
 
 
-            CONTAINER_NAME='ibftyphoonforecast/'
+            CONTAINER_NAME='ibftyphoonforecast'
     
             directory_name= 'ibf_model_results' 
         
-            filename = datetime.datetime.strptime(self.uploadTime, "%Y-%m-%dT%H:%M:%SZ")
-            filename = filename.strftime("%Y%m%dT%H")
+            filename = dt.datetime.strptime(self.uploadTime, "%Y-%m-%dT%H:%M:%SZ")
+            timestamp = filename.strftime("%Y%m%dT%H")
 
             # Local file and destination settings
 
@@ -477,8 +477,8 @@ class DatabaseManager:
 
             # Create a unique folder name (optional: timestamp-based)
         
-            uploadTime = self.uploadTime
-            timestamp = uploadTime.strftime("%Y%m%dT%HZ")
+            
+             
 
             # Destination path inside the container (acts like folder/file.zip)
             destination_blob_path = f"{directory_name}/{timestamp}_{zip_filename}"
