@@ -443,40 +443,71 @@ class DatabaseManager:
         import hashlib
         import base64
         from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient        
+        from azure.storage.filedatalake import DataLakeServiceClient   
+        from azure.storage.blob import BlobServiceClient     
         import shutil
         import os, uuid, sys
         import time
         DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM='510ibfsystem'
 
         try:
-            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
-                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM), 
-                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM)
-
-            container_name='ibftyphoonforecast/'
-            file_system_client = service_client.get_file_system_client(file_system=container_name)
-            directory_name= 'ibf_model_results' 
-
-            filename=self.Output_folder + 'model_outputs'
-
-            dir_client = file_system_client.get_directory_client(directory_name)
-            dir_client.create_directory()
             
+            # Create blob service client
+            blob_service_client = BlobServiceClient(
+                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM}.blob.core.windows.net",
+                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM
+            )
 
-            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip')#, lambda name : 'csv' in name)
-            
-            time.sleep(10) # Sleep for 10 seconds
-             
+
+            CONTAINER_NAME='ibftyphoonforecast/'
     
-            for ibfresultfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.zip')]:  
- 
-                local_file = open(self.Output_folder + ibfresultfile,'rb')
-                
-                file_contents = local_file.read()
-                file_client = dir_client.create_file(f"{ibfresultfile}")
-                file_client.upload_data(file_contents, overwrite=True)
+            directory_name= 'ibf_model_results' 
+        
+            filename = datetime.datetime.strptime(self.uploadTime, "%Y-%m-%dT%H:%M:%SZ")
+            filename = filename.strftime("%Y%m%dT%H")
+
+            # Local file and destination settings
+
+            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip')#, lambda name : 'csv' in name)            
+            time.sleep(10) # Sleep for 10 seconds
+
+       
+     
+            zip_filename = 'model_outputs.zip'
+
+            # Create a unique folder name (optional: timestamp-based)
+        
+            uploadTime = self.uploadTime
+            timestamp = uploadTime.strftime("%Y%m%dT%HZ")
+
+            # Destination path inside the container (acts like folder/file.zip)
+            destination_blob_path = f"{directory_name}/{timestamp}_{zip_filename}"
+            destination_blob_path_ = f"{directory_name}/{zip_filename}"
+
+            # Create blob service client
+            blob_service_client = BlobServiceClient(
+                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM}.blob.core.windows.net",
+                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM
+            )
+
+            # Get container client
+            container_client = blob_service_client.get_container_client(CONTAINER_NAME)
+            local_file_path= self.Output_folder + 'model_outputs.zip'
+
+
+            # Upload the ZIP file to the specified path
+            with open(local_file_path, "rb") as data:
+                blob_client = container_client.get_blob_client(destination_blob_path)
+                blob_client.upload_blob(data, overwrite=True)
+            # Upload the ZIP file to the specified path
+            with open(local_file_path, "rb") as data:
+                blob_client = container_client.get_blob_client(destination_blob_path_)
+                blob_client.upload_blob(data, overwrite=True)
+            logger.info(f'Uploaded {zip_filename} to {destination_blob_path} in container {CONTAINER_NAME}')
+            
+
             return 1
+        
         except Exception as e:
             print(e)
             return 0

@@ -199,8 +199,8 @@ class Forecast:
                                 tr.name
                                 for tr in FcastData
                                 if ( 
-                                    sum(~np.isnan(tr.max_sustained_wind.values))> sum(np.isnan(tr.max_sustained_wind.values)) 
-                                    and np.nanmin(tr.lat.values) < 21
+                                    #sum(~np.isnan(tr.max_sustained_wind.values))> sum(np.isnan(tr.max_sustained_wind.values)) and
+                                    np.nanmin(tr.lat.values) < 21
                                     and np.nanmax(tr.lat.values) > 5
                                     and np.nanmin(tr.lon.values) < 135
                                     and np.nanmax(tr.lon.values) > 115
