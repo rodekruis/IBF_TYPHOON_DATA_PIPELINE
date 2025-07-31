@@ -13,6 +13,11 @@ from rasterstats import zonal_stats
 import geopandas as gpd
 import pandas as pd
 from typhoonmodel.utility_fun.settings import *
+from affine import Affine
+import rioxarray as rio
+import numpy as np
+import netCDF4
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +64,69 @@ def download_rainfall_nomads( no_data_value=29999):
         url2=[f'{url_base}{Alternative_data_point}/{hh}/' for hh in ['00','06','12','18']]
         get_grib_files(url2, MAIN_DIRECTORY, rainfall_path)
 
+    rain_dict={}
+
+    for hour in RAINFALL_TIME_STEP:
+        pattern = f'.pgrb2a.0p50.bc_{hour}h'
+        output_filename = f'rainfall_{hour}.nc'
+        filename_list = Path(rainfall_path).glob(f'*{pattern}*')
+        with xr.open_mfdataset(filename_list, engine='cfgrib',
+                                combine="nested", concat_dim=["time"],
+                                backend_kwargs={"indexpath": "",
+                                                'filter_by_keys': {'totalNumber': 30}}
+                                ) as ds:
+            filepath = os.path.join(rainfall_path, output_filename)
+        
+            ds = ds.median(dim='number') #store only the median of the ensemble members
+            ds.to_netcdf(filepath)
+        #zonal stats to calculate rainfall per manucipality 
+        #list_df.append(zonal_stat_rain(filepath,admin))  
+        ds = xr.open_dataset(filepath)
+        rain_var = ds[list(ds.data_vars)[0]]  # or use ds['rainfall'] if known
+        rain_data = rain_var.load()  # Ensure data is loaded into memory
+        rain_data.rio.set_spatial_dims(x_dim="longitude", y_dim="latitude", inplace=True)
+        rain_data.rio.write_crs("EPSG:4326", inplace=True)
+        # Get coordinate values
+        lat = rain_data.latitude.values
+        lon = rain_data.longitude.values
+
+        if lat[0] < lat[-1]:
+            rain_data = rain_data.sortby("latitude", ascending=False)
+            lat = rain_data.latitude.values
+
+        # Create affine transform (from top-left corner)
+        res_lat = abs(lat[1] - lat[0])
+        res_lon = abs(lon[1] - lon[0])
+        transform = Affine.translation(lon[0] - res_lon / 2, lat[0] - res_lat / 2) * Affine.scale(res_lon, -res_lat)
+
+
+        # Loop over each time step and compute zonal mean
+        list_df = []
+        for i in range(rain_data.sizes["time"]):
+            array = rain_data.isel(time=i).values  # shape: (lat, lon)
+
+            band_summary = zonal_stats(
+                admin,                  # GeoDataFrame of admin areas
+                array,
+                stats="mean",
+                nodata=np.nan,
+                all_touched=True,
+                affine=transform
+            )
+                # Extract means
+            values = [stat['mean'] if stat['mean'] is not None else 0 for stat in band_summary]
+            
+            list_df.append(pd.DataFrame(values, columns=[f"timestep_{i}"]))
+            df_combined = pd.concat(list_df, axis=1)
+            df_max = df_combined.max(axis=1)
+            rain_dict[f"max_{hour}h_rain"] = df_max.values
+
+    df_rain = pd.DataFrame(rain_dict)
+    df_rain['Mun_Code'] = list(admin['adm3_pcode'].values)
+    df_rain.to_csv(os.path.join(rainfall_path, "rain_data.csv"), index=False)
+
+''' 
+
     for hour in RAINFALL_TIME_STEP:
         pattern = f'.pgrb2a.0p50.bc_{hour}h'
         output_filename = f'rainfall_{hour}.nc'
@@ -74,7 +142,9 @@ def download_rainfall_nomads( no_data_value=29999):
             ds.to_netcdf(filepath)
         #zonal stats to calculate rainfall per manucipality 
         #list_df.append(zonal_stat_rain(filepath,admin))  
-        rain_6h=rasterio.open(filepath) 
+        rain_6h=rioxarray.open_rasterio(filepath) #rasterio.open(filepath) 
+        rain_6h.rio.write_crs("EPSG:4326", inplace=True)  # Ensure CRS is set
+
         band_indexes = rain_6h.indexes
         transform = rain_6h.transform
         all_band_summaries = []
@@ -102,6 +172,10 @@ def download_rainfall_nomads( no_data_value=29999):
     df_rain['Mun_Code']=list(admin['adm3_pcode'].values)
     logger.info("saved processed rainfall file to csv")
     df_rain.to_csv(os.path.join(rainfall_path, "rain_data.csv"), index=False)
+'''
+
+
+
     
     #df_rain = pd.concat(list_df,axis=1, ignore_index=True) 
     #df_rain.columns = ["max_"+time_itr+"h_rain" for time_itr in RAINFALL_TIME_STEP]

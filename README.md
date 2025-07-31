@@ -49,6 +49,10 @@ Create a new conda environment named `tyworkflow` with all required packages by 
 conda create -n tyworkflow python=3.11 ipykernel pandas numpy geopandas scikit-learn xgboost rasterstats xarray rasterio fiona shapely cartopy dask earthpy pycountry contextily imageio h5py numba pathos cftime cfgrib netCDF4 eccodes statsmodels requests azure-storage-blob pybufrkit pint feedparser lxml beautifulsoup4 -c conda-forge
 ```
 
+```bash
+pip install azure-identity azure-storage-file azure-storage-file-datalake
+```
+
 ### Step 2: Install Visual Studio Code (or any Jupyter-compatible IDE)
 
 Make sure you have **VS Code**, **JupyterLab**, or another IDE that supports Jupyter notebooks.
