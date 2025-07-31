@@ -63,7 +63,10 @@ try:
 except ImportError:
     print('No secrets file found.')
 
+### to run data pipeline for a specific event
+ecmwf_remote_directory='20250724060000'
 
+#ecmwf_remote_directory=None
 
 countryCodes=['PHL']
 
@@ -190,15 +193,13 @@ parBox=[5,115,25,135]
 
 
 start_time = datetime.now()
+
 ### to run data pipeline for a specific event
 #ecmwf_remote_directory='20230526000000'#'20221014000000'#''#(start_time - timedelta(hours=24)).strftime("%Y%m%d120000")
 #Active_Typhoon_event_list=['NALGAE']
-
  
-### to run data pipeline for a specific event
-#ecmwf_remote_directory='20241113180000'
 
-ecmwf_remote_directory=None
+
 Active_Typhoon_event_list=[]
 
 High_resoluation_only_Switch=False

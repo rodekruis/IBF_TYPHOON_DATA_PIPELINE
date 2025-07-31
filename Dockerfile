@@ -50,8 +50,8 @@ COPY env_climada.yml /home/fbf/
 # Copy the ibf data pipeline code rest of the code and install the package
 ADD IBF-Typhoon-model .
 
-RUN micromamba create -y -f env_climada.yml -n climada_env && \
- 	micromamba clean --all --yes  
+RUN micromamba create -y -f env_climada.yml -n climada_env 
+RUN micromamba clean --all --yes  
 
 # Set the default environment
 ENV CONDA_DEFAULT_ENV=climada_env

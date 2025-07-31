@@ -9,8 +9,9 @@ import subprocess
 import logging
 import traceback
 from pathlib import Path
-from azure.storage.file import FileService
-from azure.storage.file import ContentSettings
+#from azure.storage.file import FileService
+#from azure.storage.file import ContentSettings
+
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import pandas as pd
@@ -215,9 +216,8 @@ class Forecast:
                     if High_resoluation_only_Switch:
                         Data_to_process = [tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events and tr.is_ensemble == "False")]
                     else:
-                        Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]        
+                        Data_to_process =[tr for tr in FcastData if (tr.name in TropicalCycloneAdvisoryDomain_events)]       
                     
-
                     fcast_data = [
                         track_data_clean.track_data_clean(tr)
                         for tr in Data_to_process

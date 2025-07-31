@@ -38,6 +38,27 @@ The main use of this data pipeline is to update the status of Typhoon IBF portal
 2. Change `/IBF-Typhoon-model/src/typhoonmodel/utility_fun/secrets.py.template` to `secrets.py` and fill in the necessary passwords.
 3. Install Docker-compose [follow this link](https://docs.docker.com/desktop/windows/install/)
 
+<!-- Running Pipeline With jupyter notebook -->
+## Running the model with jupyter notebook 
+
+### Step 1: Create Conda Environment
+
+Create a new conda environment named `tyworkflow` with all required packages by running:
+
+```bash
+conda create -n tyworkflow python=3.11 ipykernel pandas numpy geopandas scikit-learn xgboost rasterstats xarray rasterio fiona shapely cartopy dask earthpy pycountry contextily imageio h5py numba pathos cftime cfgrib netCDF4 eccodes statsmodels requests azure-storage-blob pybufrkit pint feedparser lxml beautifulsoup4 -c conda-forge
+```
+
+### Step 2: Install Visual Studio Code (or any Jupyter-compatible IDE)
+
+Make sure you have **VS Code**, **JupyterLab**, or another IDE that supports Jupyter notebooks.
+
+### Step 3: Open the Project and Run Notebook
+
+* Open the project folder in Visual Studio Code.
+* Open and run the `pipeline.ipynb` notebook within the `tyworkflow` environment.
+
+
 <!-- Running Pipeline With Docker -->
 ## Running With Docker on local machine 
 
