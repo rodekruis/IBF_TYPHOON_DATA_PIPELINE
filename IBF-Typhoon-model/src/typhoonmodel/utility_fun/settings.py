@@ -64,9 +64,9 @@ except ImportError:
     print('No secrets file found.')
 
 ### to run data pipeline for a specific event
-ecmwf_remote_directory='20250724060000'
+# ecmwf_remote_directory='20250724060000'
 
-#ecmwf_remote_directory=None
+ecmwf_remote_directory=None
 
 countryCodes=['PHL']
 
