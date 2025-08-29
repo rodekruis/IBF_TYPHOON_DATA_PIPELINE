@@ -61,7 +61,7 @@ class Forecast:
         self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
         self.ECMWF_MAX_TRIES = 5
-        self.ECMWF_SLEEP = 30  # s
+        self.ECMWF_SLEEP = 60  # s
         self.main_path = MAIN_DIRECTORY
         self.Input_folder = Input_folder
         self.ECMWF_folder=ECMWF_folder
@@ -153,7 +153,7 @@ class Forecast:
 
         while True:
             try:
-                logger.info("Downloading ECMWF typhoon tracks")
+                logger.info(f"Downloading ECMWF typhoon tracks. Attempt {n_tries+1}.")
                 bufr_files = TCForecast.fetch_bufr_ftp(target_dir=self.ECMWF_folder,remote_dir=self.remote_dir)
                 #
                 bufr_files_par=[]
@@ -232,12 +232,12 @@ class Forecast:
                 n_tries += 1
                 if n_tries >= self.ECMWF_MAX_TRIES:
                     logger.error(
-                        f" Data downloading from ECMWF failed: {e}, "
+                        f" Data downloading from ECMWF attempt {n_tries} failed: {e}, "
                         f"reached limit of {self.ECMWF_MAX_TRIES} tries, exiting"
                     )
                     sys.exit()
                 logger.error(
-                    f" Data downloading from ECMWF failed: {e}, retrying after {self.ECMWF_SLEEP} s"
+                    f" Data downloading from ECMWF attempt {n_tries} failed: {e}, retrying after {self.ECMWF_SLEEP} s"
                 )
                 time.sleep(self.ECMWF_SLEEP * n_tries)
                 continue
