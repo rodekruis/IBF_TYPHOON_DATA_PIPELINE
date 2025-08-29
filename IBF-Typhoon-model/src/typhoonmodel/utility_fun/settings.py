@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 try:
     from typhoonmodel.utility_fun.secrets import *
-    for key, value in globals().items():
+    for key, value in globals().copy().items():
         if not key.startswith("__") and not callable(value):
             os.environ[key] = str(value)
 except ImportError as e:
