@@ -27,7 +27,7 @@
 This tool was developed as a trigger mechanism for the typhoon Early action protocol of the Philippines Red Cross FbF project. The model will predict the potential damage of a typhoon before landfall, and the prediction will be percentage of completely damaged houses per municipality. The tool is available under the [GPL license](https://github.com/rodekruis/Typhoon-Impact-based-forecasting-model/blob/master/LICENSE)
 
 To run the pipeline, you need access to an Data.zip, and credentiials for 510 Datalake and FTP server. If you or your organization is interested in using the pipeline, 
-please contact [510 Global](https://www.510.global/contact-us/) to obtain the credentials. You will receive a file called `secrets`, which you need to place in the top-level directory.
+please contact [510 Global](https://www.510.global/contact-us/) to obtain the credentials. You will receive a file either called `secrets` or `.env`, which you need to place in the top-level directory.
 
 The main use of this data pipeline is to update the status of Typhoon IBF portal based on the latest ECMWF forecast. The status of Triggered/Not Triggred is defined based on EAP trigger value. Currently this is based on Average impact. This value can be updated the setting.py file [at this line ](https://github.com/rodekruis/IBF_TYPHOON_DATA_PIPELINE/blob/master/IBF-Typhoon-model/src/typhoonmodel/utility_fun/settings.py#L92) Defult value is Average, other possible values are 50,70 and 90 , which is the percentage of ensamble members passing the treshold.
 
@@ -35,7 +35,9 @@ The main use of this data pipeline is to update the status of Typhoon IBF portal
 ## Installation
 
 1. Clone the repo
-2. Change `/IBF-Typhoon-model/src/typhoonmodel/utility_fun/secrets.py.template` to `secrets.py` and fill in the necessary passwords.
+2. Fill in necessary credentials:
+   - If using `secret.py`, change `/IBF-Typhoon-model/src/typhoonmodel/utility_fun/secrets.py.template` to `secrets.py` and fill in credentials.
+   - If using `.env`, change `/IBF-Typhoon-model/.env.template` to `.env` and fill in credentials.
 3. Install Docker-compose [follow this link](https://docs.docker.com/desktop/windows/install/)
 
 <!-- Running Pipeline With jupyter notebook -->
@@ -46,11 +48,7 @@ The main use of this data pipeline is to update the status of Typhoon IBF portal
 Create a new conda environment named `tyworkflow` with all required packages by running:
 
 ```bash
-conda create -n tyworkflow python=3.11 ipykernel pandas numpy geopandas scikit-learn xgboost rasterstats xarray rasterio fiona shapely cartopy dask earthpy pycountry contextily imageio h5py numba pathos cftime cfgrib netCDF4 eccodes statsmodels requests azure-storage-blob pybufrkit pint feedparser lxml beautifulsoup4 -c conda-forge
-```
-
-```bash
-pip install azure-identity azure-storage-file azure-storage-file-datalake
+conda create -n tyworkflow python=3.11 ipykernel pandas numpy geopandas scikit-learn xgboost rasterstats xarray rasterio fiona shapely cartopy dask earthpy pycountry contextily imageio h5py numba pathos cftime cfgrib netCDF4 eccodes statsmodels requests pybufrkit pint feedparser lxml beautifulsoup4 tqdm azure-storage-file azure-identity azure-storage-blob azure-storage-file azure-storage-file-datalake python-dotenv -c conda-forge
 ```
 
 ### Step 2: Install Visual Studio Code (or any Jupyter-compatible IDE)

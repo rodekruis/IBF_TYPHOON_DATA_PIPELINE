@@ -2,84 +2,46 @@ import os
 from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
 ##################
 ## LOAD SECRETS ##
 ##################
-'''
-# 1. Try to load secrets from Azure key vault (i.e. when running through Logic App) if user has access
-try:
-    from azure.identity import DefaultAzureCredential
-    from azure.keyvault.secrets import SecretClient   
-    az_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
-    secret_client = SecretClient(vault_url='https://ibf-flood-keys.vault.azure.net', credential=az_credential)
-    
-    AZURE_STORAGE_ACCOUNT=secret_client.get_secret("AZURE-STORAGE-ACCOUNT").value
-    AZURE_CONNECTING_STRING=secret_client.get_secret("AZURE-CONNECTING-STRING").value   
-     
-    ADMIN_LOGIN = secret_client.get_secret("ADMIN-LOGIN").value
-    ADMIN_PASSWORD=secret_client.get_secret("IBF-PRO-PASSWORD").value
-    IBF_API_URL=secret_client.get_secret("IBF-URL").value
- 
- 
-   
-   # UCL_USERNAME=secret_client.get_secret("UCL-USERNAME").value
-   # UCL_PASSWORD=secret_client.get_secret("UCL-PASSWORD").value  
-    
-    DATALAKE_STORAGE_ACCOUNT_NAME = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-NAME").value
-    DATALAKE_STORAGE_ACCOUNT_KEY = secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY").value
-    DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM=secret_client.get_secret("DATALAKE-STORAGE-ACCOUNT-KEY-IBFSYSTEM").value
-    DATALAKE_API_VERSION = '2018-11-09'
- 
- 
- 
 
-
-except Exception as e:
-    print('No access to Azure Key vault, skipping.')
-
-#2. Try to load secrets from env-variables (i.e. when using Github Actions)
-try:
-    import os  
-    
-    ADMIN_LOGIN = os.environ['ADMIN_LOGIN']
-    IBF_API_URL=os.environ['IBF_API_URL']
-    ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']    
-    #PHP_PASSWORD=os.environ['IBF_PASSWORD']
-    DATALAKE_STORAGE_ACCOUNT_NAME = os.environ['DATALAKE_STORAGE_ACCOUNT_NAME']        
-    DATALAKE_STORAGE_ACCOUNT_KEY = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY"]
-  
-    print('Environment variables found.')
-   
-    DATALAKE_API_VERSION = '2021-06-08'
-    #DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM = os.environ["DATALAKE_STORAGE_ACCOUNT_KEY2"]
-    
-except Exception as e:
-    print('No environment variables found.')
-    
-''' 
-# 3. If 1. and 2. both fail, then assume secrets are loaded via secrets.py file (when running locally). If neither of the 3 options apply, this script will fail.
 try:
     from typhoonmodel.utility_fun.secrets import *
-except ImportError:
-    print('No secrets file found.')
+    for key, value in globals().copy().items():
+        if not key.startswith("__") and not callable(value):
+            os.environ[key] = str(value)
+except ImportError as e:
+    print(f"An error occurred while loading the secrets.py file {e}. Loading secrets from .env file.")
+    try:
+        load_dotenv(".env")
+    except Exception as e:
+        print(f"An error occurred while loading secrets: {e}")
 
-### to run data pipeline for a specific event
-# ecmwf_remote_directory='20250724060000'
+IBF_API_URL = os.getenv("IBF_API_URL")
+ADMIN_LOGIN = os.getenv("ADMIN_LOGIN")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+DATALAKE_STORAGE_ACCOUNT_NAME = os.getenv("DATALAKE_STORAGE_ACCOUNT_NAME")
+DATALAKE_STORAGE_ACCOUNT_KEY = os.getenv("DATALAKE_STORAGE_ACCOUNT_KEY")
+DATALAKE_API_VERSION = os.getenv("DATALAKE_API_VERSION")
 
-ecmwf_remote_directory=None
+
+### to run data pipeline for a specific event e.g. '20250724060000'
+ecmwf_remote_directory= None #'20250724060000'
 
 countryCodes=['PHL']
 
 # COUNTRY SETTINGS
 SETTINGS_SECRET = {
     "PHL": {
-        "IBF_API_URL":IBF_API_URL,# IBF_API_URL, 
+        "IBF_API_URL":IBF_API_URL,
         "ADMIN_LOGIN": ADMIN_LOGIN,
         "ADMIN_PASSWORD": ADMIN_PASSWORD,
-        #"UCL_USERNAME": UCL_USERNAME,
-        #"UCL_PASSWORD": UCL_PASSWORD,
-        #"AZURE_STORAGE_ACCOUNT": AZURE_STORAGE_ACCOUNT,
-        #"AZURE_CONNECTING_STRING": AZURE_CONNECTING_STRING,
         "admin_level": 3,
         "mock": False,
         "mock_nontrigger_typhoon_event": 'nontrigger_scenario',

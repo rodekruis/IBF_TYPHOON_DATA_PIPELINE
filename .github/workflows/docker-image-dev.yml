@@ -24,3 +24,4 @@ jobs:
           push: true
           tags: ${{ secrets.ACR_ENDPOINT }}/${{ vars.IMAGE_NAME }}:dev
           file: ./Dockerfile
+
