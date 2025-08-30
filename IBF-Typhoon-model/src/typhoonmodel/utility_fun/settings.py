@@ -15,10 +15,10 @@ try:
             os.environ[key] = str(value)
 except ImportError:
     print(f"Could not import secrets.py file. Loading secrets from .env file.")
-    if os.path.exists(".env"):
+    try:
         load_dotenv(".env")
-    else:
-        print(f"ERROR: .env file not found.")
+    except Exception as e:
+        print(f"ERROR: Could not load .env file. {e}")
 
 IBF_API_URL = os.getenv("IBF_API_URL")
 ADMIN_LOGIN = os.getenv("ADMIN_LOGIN")
