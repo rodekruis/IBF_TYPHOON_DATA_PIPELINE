@@ -13,12 +13,12 @@ try:
     for key, value in globals().copy().items():
         if not key.startswith("__") and not callable(value):
             os.environ[key] = str(value)
-except ImportError as e:
-    print(f"An error occurred while loading the secrets.py file {e}. Loading secrets from .env file.")
-    try:
+except ImportError:
+    print(f"Could not import secrets.py file. Loading secrets from .env file.")
+    if os.path.exists(".env"):
         load_dotenv(".env")
-    except Exception as e:
-        print(f"An error occurred while loading secrets: {e}")
+    else:
+        print(f"ERROR: .env file not found.")
 
 IBF_API_URL = os.getenv("IBF_API_URL")
 ADMIN_LOGIN = os.getenv("ADMIN_LOGIN")
