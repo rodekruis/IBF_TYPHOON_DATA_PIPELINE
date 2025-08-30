@@ -18,7 +18,7 @@ except ImportError:
     try:
         load_dotenv(".env")
     except Exception as e:
-        print(f"An error occurred while loading secrets: {e}")
+        print(f"ERROR: Could not load .env file. {e}")
 
 IBF_API_URL = os.getenv("IBF_API_URL")
 ADMIN_LOGIN = os.getenv("ADMIN_LOGIN")
