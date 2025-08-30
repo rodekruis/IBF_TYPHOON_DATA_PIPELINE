@@ -13,8 +13,8 @@ try:
     for key, value in globals().copy().items():
         if not key.startswith("__") and not callable(value):
             os.environ[key] = str(value)
-except ImportError as e:
-    print(f"An error occurred while loading the secrets.py file {e}. Loading secrets from .env file.")
+except ImportError:
+    print(f"Could not import secrets.py file. Loading secrets from .env file.")
     try:
         load_dotenv(".env")
     except Exception as e:
