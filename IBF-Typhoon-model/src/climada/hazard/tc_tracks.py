@@ -79,6 +79,7 @@ CAT_NAMES = {
     2: 'Typhoon', 
     3: 'Severe Typhoon', 
     4: 'Super Typhoon', 
+    5: 'Super Typhoon', 
 
 }
 """Saffir-Simpson category names."""
