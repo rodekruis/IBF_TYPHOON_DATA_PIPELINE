@@ -33,4 +33,3 @@ COPY IBF-Typhoon-model $HOME/IBF-Typhoon-model
 WORKDIR $HOME/IBF-Typhoon-model
 RUN pip install .
 
-WORKDIR $HOME
