@@ -1,14 +1,10 @@
 affine
 asttokens
 attrs
-azure-common==1.1.28
-azure-core
-azure-identity==1.23.1
-azure-mgmt-core==1.5.0
+azure-identity==1.25.0
 azure-mgmt-datafactory==9.1.0
 azure-mgmt-resource==23.2.0
 azure-storage-blob
-azure-storage-common==2.1.0
 azure-storage-file==2.1.0
 azure-storage-file-datalake==12.21.0
 azure-storage-file-share==12.22.0
@@ -21,7 +17,7 @@ bokeh
 branca
 Brotli
 cached-property
-Cartopy
+cartopy
 cdsapi==0.7.5
 certifi
 cffi
@@ -121,7 +117,7 @@ patsy
 pexpect==4.9.0
 pickleshare
 pillow
-Pint
+pint
 platformdirs
 poetry-plugin-export==1.6.0
 portalocker==2.10.1
@@ -146,11 +142,10 @@ pyparsing
 pyproj
 pyshp
 PySocks
-python-dotenv==1.1.1
 python-dateutil
+python-dotenv
 pytz
 PyWavelets==1.8.0
-#pywin32
 PyYAML==6.0.2
 pyzmq
 rasterio==1.4.3
@@ -177,6 +172,7 @@ sortedcontainers
 soupsieve
 SQLAlchemy==2.0.36
 stack_data
+stackstac==0.5.1
 statsmodels
 tblib
 threadpoolctl
@@ -193,7 +189,6 @@ unicodedata2
 urllib3
 wcwidth
 Werkzeug==3.1.3
-win_inet_pton
 xarray
 xgboost
 xyzservices
