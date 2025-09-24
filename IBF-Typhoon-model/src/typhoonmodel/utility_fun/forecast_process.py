@@ -60,7 +60,7 @@ class Forecast:
         self.remote_dir = ecmwf_remote_directory 
         self.Wind_damage_radius=Wind_damage_radius
         self.Population_Growth_factor=Population_Growth_factor #(1+0.02)^7 adust 2015 census data by 2%growth for the pst 7 years 
-        self.ECMWF_MAX_TRIES = 30
+        self.ECMWF_MAX_TRIES = 10
         self.ECMWF_SLEEP = 30  # s
         self.main_path = MAIN_DIRECTORY
         self.Input_folder = Input_folder
@@ -237,10 +237,10 @@ class Forecast:
                     )
                     sys.exit()
                 time_sleep = self.ECMWF_SLEEP * n_tries
-                logger.warning(
+                logger.error(
                     f" Data downloading from ECMWF attempt {n_tries} failed: {e}, retrying after {time_sleep} s"
                 )
-                time.sleep(self.ECMWF_SLEEP)
+                time.sleep(time_sleep)
                 continue
             break
         
