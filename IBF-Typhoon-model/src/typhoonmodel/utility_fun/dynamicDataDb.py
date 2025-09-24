@@ -348,7 +348,7 @@ class DatabaseManager:
         import os, uuid, sys
 
         container_name='ibftyphoonforecast'
-        directory_name = 'output/forecast/'
+        directory_name = 'output/forecast/' + datalakefolder
 
         try:
             # Create blob service client
@@ -357,14 +357,15 @@ class DatabaseManager:
                 credential=DATALAKE_STORAGE_ACCOUNT_KEY
             )
             container_client = blob_service_client.get_container_client(container_name)
-            dir_client = container_client.get_directory_client(datalakefolder)
+            dir_client = container_client.get_directory_client(directory_name)
             dir_client.create_directory()
             
             for jsonfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.json')]:
-                local_file = open(self.Output_folder + jsonfile,'r')                
-                file_contents = local_file.read()
-                file_client = dir_client.create_file(f"{jsonfile}")
-                file_client.upload_data(file_contents, overwrite=True)
+                local_file = self.Output_folder + jsonfile
+                remote_file = directory_name + '/' + jsonfile
+                with open(local_file, "rb") as data:
+                    blob_client = container_client.get_blob_client(remote_file)
+                    blob_client.upload_blob(data, overwrite=True)
 
         except Exception as e:
             print(e) 
