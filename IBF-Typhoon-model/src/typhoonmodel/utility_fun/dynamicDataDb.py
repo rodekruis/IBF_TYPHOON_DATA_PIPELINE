@@ -12,6 +12,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry  
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+
 
 class DatabaseManager:
 
@@ -343,7 +345,7 @@ class DatabaseManager:
 
 
     def postDataToDatalake(self,datalakefolder):
-        from azure.storage.blob import BlobServiceClient     
+        from azure.storage.blob import BlobServiceClient
 
         import os, uuid, sys
 
@@ -362,25 +364,20 @@ class DatabaseManager:
             
             for jsonfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.json')]:
                 local_file = open(self.Output_folder + jsonfile,'r')                
-                file_contents = local_file.read()
-                file_client = dir_client.create_file(f"{jsonfile}")
-                file_client.upload_data(file_contents, overwrite=True)
+                # file_contents = local_file.read()
+                # file_client = dir_client.create_file(f"{jsonfile}")
+                # file_client.upload_data(file_contents, overwrite=True)
+                with open(local_file, "rb") as data:
+                    blob_client = container_client.get_blob_client(directory_name)
+                    blob_client.upload_blob(data, overwrite=True)
 
         except Exception as e:
             print(e) 
     
 
     def postResulToDatalake(self):
-        import requests
         import datetime as dt
-        import hmac
-        import hashlib
-        import base64
-        from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient   
         from azure.storage.blob import BlobServiceClient     
-        import shutil
-        import os, uuid, sys
         import time
 
         try:
