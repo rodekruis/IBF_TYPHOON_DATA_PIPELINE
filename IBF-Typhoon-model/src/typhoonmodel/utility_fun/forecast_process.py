@@ -236,8 +236,9 @@ class Forecast:
                         f"reached limit of {self.ECMWF_MAX_TRIES} tries, exiting"
                     )
                     sys.exit()
-                logger.error(
-                    f" Data downloading from ECMWF failed: {e}, retrying after {self.ECMWF_SLEEP} s"
+                time_sleep = self.ECMWF_SLEEP * n_tries
+                logger.warning(
+                    f" Data downloading from ECMWF attempt {n_tries} failed: {e}, retrying after {time_sleep} s"
                 )
                 time.sleep(self.ECMWF_SLEEP)
                 continue
