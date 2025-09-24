@@ -1,3 +1,4 @@
+import zipfile
 import pandas as pd
 import requests
 import json
@@ -295,133 +296,68 @@ class DatabaseManager:
             'email', self.ADMIN_LOGIN), ('password', self.ADMIN_PASSWORD)])
         return login_response.json()['user']['token']
 
-    def getDataFromDatalake(self, path):
-        import requests
-        import datetime
-        import hmac
-        import hashlib
-        import base64
+    def getDataFromDatalake(self, filename):
+        from azure.storage.blob import BlobServiceClient
 
-        request_time = datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
-        file_system_name = 'ibf/' + path
-        logger.info(f'Downloading from datalake: {file_system_name}')
+        container_name='ibftyphoonforecast'
+        directory_name = 'input/'
+        logger.info(f'Downloading from {container_name}: /{directory_name}{filename}')
 
-        string_params = {
-            'verb': 'GET',
-            'Content-Encoding': '',
-            'Content-Language': '',
-            'Content-Length': '',
-            'Content-MD5': '',
-            'Content-Type': '',
-            'Date': '',
-            'If-Modified-Since': '',
-            'If-Match': '',
-            'If-None-Match': '',
-            'If-Unmodified-Since': '',
-            'Range': '',
-            'CanonicalizedHeaders': 'x-ms-date:' + request_time + '\nx-ms-version:' + DATALAKE_API_VERSION,
-            'CanonicalizedResource': '/' + DATALAKE_STORAGE_ACCOUNT_NAME+'/'+file_system_name
-        }
-
-        string_to_sign = (string_params['verb'] + '\n'
-                          + string_params['Content-Encoding'] + '\n'
-                          + string_params['Content-Language'] + '\n'
-                          + string_params['Content-Length'] + '\n'
-                          + string_params['Content-MD5'] + '\n'
-                          + string_params['Content-Type'] + '\n'
-                          + string_params['Date'] + '\n'
-                          + string_params['If-Modified-Since'] + '\n'
-                          + string_params['If-Match'] + '\n'
-                          + string_params['If-None-Match'] + '\n'
-                          + string_params['If-Unmodified-Since'] + '\n'
-                          + string_params['Range'] + '\n'
-                          + string_params['CanonicalizedHeaders']+'\n'
-                          + string_params['CanonicalizedResource'])
-
-        signed_string = base64.b64encode(hmac.new(base64.b64decode(
-            DATALAKE_STORAGE_ACCOUNT_KEY), msg=string_to_sign.encode('utf-8'), digestmod=hashlib.sha256).digest()).decode()
-        headers = {
-            'x-ms-date': request_time,
-            'x-ms-version': DATALAKE_API_VERSION,
-            'Authorization': ('SharedKey ' + DATALAKE_STORAGE_ACCOUNT_NAME + ':' + signed_string)
-        }
-        url = ('https://' + DATALAKE_STORAGE_ACCOUNT_NAME +
-               '.dfs.core.windows.net/'+file_system_name)
-        r = requests.get(url, headers=headers)
-        return r
-
+        # Create blob service client
+        blob_service_client = BlobServiceClient(
+            account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+            credential=DATALAKE_STORAGE_ACCOUNT_KEY
+        )
+        self._download_from_blob(blob_service_client, container_name, directory_name + filename, filename)
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            zip_ref.extractall('./data') 
 
 
     def getDataFromDatalake2(self, datalakefolder):
-        import requests
-        import datetime
-        import hmac
-        import hashlib
-        import base64
-        from azure.storage.filedatalake import DataLakeServiceClient
-
-        request_time = datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+        from azure.storage.blob import BlobServiceClient
   
-        logger.info(f'Downloading previous model run data for {datalakefolder} from datalake')
+        container_name='ibftyphoonforecast'
+        directory_name = 'output/forecast'
+        logger.info(f'Downloading previous model run data from {container_name}: /{directory_name}')
 
-                
-        service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
-                                                                                                DATALAKE_STORAGE_ACCOUNT_NAME), 
-                                            credential=DATALAKE_STORAGE_ACCOUNT_KEY)
-
-        container_name='ibf/typhoon/Gold/forecast/'
-        
-        file_system_client = service_client.get_file_system_client(file_system=container_name)
-        directory_name= datalakefolder 
-          
-        directory_client = file_system_client.get_directory_client(directory_name)
-        
-        
-        
+        # Create blob service client
+        blob_service_client = BlobServiceClient(
+            account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+            credential=DATALAKE_STORAGE_ACCOUNT_KEY
+        )
+    
         for layer in ["prob_within_50km","houses_affected","forecast_severity","forecast_trigger","show_admin_area","affected_population","tracks","rainfall","windspeed"]:
-
-            logger.info(f'downlading layer {layer}') 
-            
-            #DataFile = self.db.getDataFromDatalake(self, jsonpath)
+            logger.info(f'downloading layer {layer}')
             remote_file= f'{datalakefolder}_{layer}.json' 
-            
             local_file_path=os.path.join(self.Output_folder,remote_file)
-
-            local_file = open(local_file_path,'wb')
-
-            file_client = directory_client.get_file_client(remote_file)
-
-            download = file_client.download_file()
-
-            downloaded_bytes = download.readall()
-
-            local_file.write(downloaded_bytes)
-
-            local_file.close()
+            self._download_from_blob(blob_service_client, container_name, remote_file, local_file_path)
  
+    def _download_from_blob(self, blob_service_client, container_name, blob_name, local_file_path):
+        try:
+            container_client = blob_service_client.get_container_client(container_name)
+            blob_client = container_client.get_blob_client(blob_name)
+            with open(local_file_path, "wb") as download_file:
+                download_file.write(blob_client.download_blob(timeout=120).readall())
+        except Exception as e:
+            print(e)
+
 
     def postDataToDatalake(self,datalakefolder):
-        import requests
-        import datetime
-        import hmac
-        import hashlib
-        import base64
-        from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient
+        from azure.storage.blob import BlobServiceClient     
 
         import os, uuid, sys
 
+        container_name='ibftyphoonforecast'
+        directory_name = 'output/forecast/'
+
         try:
-
-
-            service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", 
-                                                                                                    DATALAKE_STORAGE_ACCOUNT_NAME), 
-                                                credential=DATALAKE_STORAGE_ACCOUNT_KEY)
-
-            container_name='ibf/typhoon/Gold/forecast/'
-            file_system_client = service_client.get_file_system_client(file_system=container_name)
-            directory_name= datalakefolder  #self.
-            dir_client = file_system_client.get_directory_client(directory_name)
+            # Create blob service client
+            blob_service_client = BlobServiceClient(
+                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+                credential=DATALAKE_STORAGE_ACCOUNT_KEY
+            )
+            container_client = blob_service_client.get_container_client(container_name)
+            dir_client = container_client.get_directory_client(datalakefolder)
             dir_client.create_directory()
             
             for jsonfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.json')]:
@@ -432,8 +368,6 @@ class DatabaseManager:
 
         except Exception as e:
             print(e) 
-            
-    
     
 
     def postResulToDatalake(self):
@@ -448,37 +382,17 @@ class DatabaseManager:
         import shutil
         import os, uuid, sys
         import time
-        DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM='510ibfsystem'
 
         try:
-            
-            # Create blob service client
-            blob_service_client = BlobServiceClient(
-                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM}.blob.core.windows.net",
-                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM
-            )
-
-
             CONTAINER_NAME='ibftyphoonforecast'
-    
             directory_name= 'ibf_model_results' 
-        
+            zip_filename = 'model_outputs.zip'
             filename = dt.datetime.strptime(self.uploadTime, "%Y-%m-%dT%H:%M:%SZ")
             timestamp = filename.strftime("%Y%m%dT%H")
 
             # Local file and destination settings
-
-            self.zipFilesInDir(self.Output_folder, self.Output_folder+'model_outputs.zip')#, lambda name : 'csv' in name)            
+            self.zipFilesInDir(self.Output_folder, self.Output_folder + zip_filename)
             time.sleep(10) # Sleep for 10 seconds
-
-       
-     
-            zip_filename = 'model_outputs.zip'
-
-            # Create a unique folder name (optional: timestamp-based)
-        
-            
-             
 
             # Destination path inside the container (acts like folder/file.zip)
             destination_blob_path = f"{directory_name}/{timestamp}_{zip_filename}"
@@ -486,14 +400,13 @@ class DatabaseManager:
 
             # Create blob service client
             blob_service_client = BlobServiceClient(
-                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME_IBFSYSTEM}.blob.core.windows.net",
-                credential=DATALAKE_STORAGE_ACCOUNT_KEY_IBFSYSTEM
+                account_url=f"https://{DATALAKE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+                credential=DATALAKE_STORAGE_ACCOUNT_KEY
             )
 
             # Get container client
             container_client = blob_service_client.get_container_client(CONTAINER_NAME)
-            local_file_path= self.Output_folder + 'model_outputs.zip'
-
+            local_file_path= self.Output_folder + zip_filename
 
             # Upload the ZIP file to the specified path
             with open(local_file_path, "rb") as data:
@@ -505,7 +418,6 @@ class DatabaseManager:
                 blob_client.upload_blob(data, overwrite=True)
             logger.info(f'Uploaded {zip_filename} to {destination_blob_path} in container {CONTAINER_NAME}')
             
-
             return 1
         
         except Exception as e:
