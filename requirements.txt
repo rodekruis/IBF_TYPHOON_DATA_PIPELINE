@@ -142,6 +142,7 @@ pyparsing
 pyproj
 pyshp
 PySocks
+python-dotenv==1.1.1
 python-dateutil
 pytz
 PyWavelets==1.8.0

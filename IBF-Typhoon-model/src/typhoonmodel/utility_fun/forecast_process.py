@@ -153,7 +153,7 @@ class Forecast:
 
         while True:
             try:
-                logger.info("Downloading ECMWF typhoon tracks")
+                logger.info(f"Downloading ECMWF typhoon tracks. Attempt {n_tries+1}.")
                 bufr_files = TCForecast.fetch_bufr_ftp(target_dir=self.ECMWF_folder,remote_dir=self.remote_dir)
                 #
                 bufr_files_par=[]
@@ -232,7 +232,7 @@ class Forecast:
                 n_tries += 1
                 if n_tries >= self.ECMWF_MAX_TRIES:
                     logger.error(
-                        f" Data downloading from ECMWF failed: {e}, "
+                        f" Data downloading from ECMWF attempt {n_tries} failed: {e}, "
                         f"reached limit of {self.ECMWF_MAX_TRIES} tries, exiting"
                     )
                     sys.exit()
