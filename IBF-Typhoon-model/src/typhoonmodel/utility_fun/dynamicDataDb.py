@@ -12,6 +12,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry  
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+
 
 class DatabaseManager:
 
@@ -343,7 +345,7 @@ class DatabaseManager:
 
 
     def postDataToDatalake(self,datalakefolder):
-        from azure.storage.blob import BlobServiceClient     
+        from azure.storage.blob import BlobServiceClient
 
         import os, uuid, sys
 
@@ -372,16 +374,8 @@ class DatabaseManager:
     
 
     def postResulToDatalake(self):
-        import requests
         import datetime as dt
-        import hmac
-        import hashlib
-        import base64
-        from azure.identity import DefaultAzureCredential
-        from azure.storage.filedatalake import DataLakeServiceClient   
         from azure.storage.blob import BlobServiceClient     
-        import shutil
-        import os, uuid, sys
         import time
 
         try:
