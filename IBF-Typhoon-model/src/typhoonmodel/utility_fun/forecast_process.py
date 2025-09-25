@@ -237,7 +237,7 @@ class Forecast:
                     )
                     sys.exit()
                 time_sleep = self.ECMWF_SLEEP * n_tries
-                logger.error(
+                logger.warning(
                     f" Data downloading from ECMWF attempt {n_tries} failed: {e}, retrying after {time_sleep} s"
                 )
                 time.sleep(time_sleep)

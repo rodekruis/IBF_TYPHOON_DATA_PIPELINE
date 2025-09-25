@@ -178,7 +178,7 @@ class TCForecast(TCTracks):
 
         except ftplib.all_errors as err:
             con.quit()
-            raise type(err)('Error while downloading BUFR TC tracks: ' + str(err)) from err
+            raise type(err)('Problem while downloading BUFR TC tracks: ' + str(err)) from err
 
         _ = con.quit()
 
