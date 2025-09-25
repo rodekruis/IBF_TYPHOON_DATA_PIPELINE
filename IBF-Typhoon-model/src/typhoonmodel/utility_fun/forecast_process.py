@@ -508,11 +508,12 @@ class Forecast:
             n_estimators=100,
             random_state=42,
             tree_method="hist",
+            verbosity=0
         )
 
         eval_set = [(X_train, y_train), (X_test, y_test)]
 
-        reg.fit(X, y, eval_set=eval_set)
+        reg.fit(X, y, eval_set=eval_set, verbose=False)
         df_total['HAZ_v_max']=self.ECMWF_CORRECTION_FACTOR*df_total['HAZ_v_max']
         
         X_all = df_total[selected_features_xgb_regr]
