@@ -359,8 +359,6 @@ class DatabaseManager:
                 credential=DATALAKE_STORAGE_ACCOUNT_KEY
             )
             container_client = blob_service_client.get_container_client(container_name)
-            dir_client = container_client.get_directory_client(directory_name)
-            dir_client.create_directory()
             
             for jsonfile in [x for x in os.listdir(self.Output_folder) if x.endswith('.json')]:
                 local_file = self.Output_folder + jsonfile
