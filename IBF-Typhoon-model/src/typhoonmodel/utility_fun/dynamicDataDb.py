@@ -341,7 +341,7 @@ class DatabaseManager:
             with open(local_file_path, "wb") as download_file:
                 download_file.write(blob_client.download_blob(timeout=120).readall())
         except Exception as e:
-            print(e)
+            logger.error(e)
 
 
     def postDataToDatalake(self,datalakefolder):
@@ -368,7 +368,7 @@ class DatabaseManager:
                     blob_client.upload_blob(data, overwrite=True)
 
         except Exception as e:
-            print(e) 
+            logger.error(e)
     
 
     def postResulToDatalake(self):
@@ -414,7 +414,7 @@ class DatabaseManager:
             return 1
         
         except Exception as e:
-            print(e)
+            logger.error(e)
             return 0
             
             
