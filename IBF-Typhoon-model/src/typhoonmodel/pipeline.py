@@ -68,25 +68,14 @@ def main():
             mock=SETTINGS_SECRET[countryCodeISO3]["mock"]
             mock_nontrigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_nontrigger_typhoon_event"]
             mock_trigger_typhoon_event=SETTINGS_SECRET[countryCodeISO3]["mock_trigger_typhoon_event"]
-            mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]            
+            mock_trigger=SETTINGS_SECRET[countryCodeISO3]["if_mock_trigger"]
+            
             # Download data 
-            #dbm_ = DatabaseManager(countryCodeISO3,admin_level)
             db = DatabaseManager(countryCodeISO3,admin_level)            
             filename='data.zip'
-            path = 'typhoon/Gold/ibfdatapipeline/'+ filename
-            #admin_area_json1['geometry'] = admin_area_json1.pop('geom')
-            DataFile = db.getDataFromDatalake(path)
-            if DataFile.status_code >= 400:
-                raise ValueError()
-            open('./' + filename, 'wb').write(DataFile.content)
-            path_to_zip_file='./'+filename
-            
-            with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
-                zip_ref.extractall('./data') 
+            db.getDataFromDatalake(filename)
             logger.info('finished data download')
             
-    
-
             ###############################################################
             ####  check setting for mock data 
             if mock:
