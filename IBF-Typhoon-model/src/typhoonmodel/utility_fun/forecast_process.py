@@ -1799,6 +1799,16 @@ class Forecast:
         df_adm_impact = pd.merge(shfile, impact.filter(['Mun_Code','impact','HAZ_dis_track_min']),  how='left', left_on='adm3_pcode', right_on = 'Mun_Code')
         df_map=df_adm_impact.query('HAZ_dis_track_min<200')
         df_map1=df_adm_impact.query('HAZ_dis_track_min<300')
+        
+        # Check if df_map is empty or has invalid geometries
+        if df_map.empty:
+            logger.warning("df_map is empty after filtering. Using df_map1 instead.")
+            df_map = df_map1.copy()
+        
+        if df_map.empty:
+            logger.warning("Both df_map and df_map1 are empty. Using all administrative areas.")
+            df_map = df_adm_impact.copy()
+        
         df_map.fillna(0,inplace=True)
         
         model_run_time=self.forecastTime
