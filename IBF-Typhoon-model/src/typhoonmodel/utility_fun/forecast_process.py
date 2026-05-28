@@ -1773,7 +1773,6 @@ class Forecast:
         import numpy as np
         import matplotlib.colors as colors
         import geopandas as gpd
-        import earthpy.plot as ep 
         import contextily as cx       
         import numpy as np
         import rasterio
@@ -1781,7 +1780,6 @@ class Forecast:
         import matplotlib as mpl
         import geopandas as gpd
         import pandas as pd
-        import earthpy.plot as ep 
         import contextily as cx
         import imageio
         
