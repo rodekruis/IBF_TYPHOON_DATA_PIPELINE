@@ -501,7 +501,7 @@ class Forecast:
             eval_metric=mean_absolute_error,
             gamma=1,
             objective="reg:squarederror",
-            gpu_id=-1,
+            device="cpu",
             grow_policy="depthwise",
             learning_rate=0.025,
             min_child_weight=1,
