@@ -1769,6 +1769,34 @@ class Forecast:
                     json.dump(exposure_data, fp)
                 logger.info('finshed wind calculation')
     
+    def _select_map_layers(self, df_adm_impact):
+        """
+        Check if dataframe for mapping is empty.
+        If so, return alternative foreground/background map layers with valid geometries.
+        """
+        df_map = df_adm_impact.query('HAZ_dis_track_min<200')
+        df_map_bg = df_adm_impact.query('HAZ_dis_track_min<300')
+
+        if df_map.empty:
+            logger.warning("df_map is empty after filtering. Using df_map1 instead.")
+            df_map = df_map_bg.copy()
+
+        if df_map.empty:
+            logger.warning("Both df_map and df_map1 are empty. Using all administrative areas.")
+            df_map = df_adm_impact.copy()
+
+        if df_map_bg.empty:
+            df_map_bg = df_adm_impact.copy()
+
+        df_map_bg = df_map_bg[df_map_bg.geometry.notna()].copy()
+        df_map = df_map[df_map.geometry.notna()].copy()
+
+        if df_map.empty:
+            logger.warning("Filtered map layer has no valid geometries. Using background layer for impact plotting.")
+            df_map = df_map_bg.copy()
+
+        return df_map, df_map_bg
+
     def makeMaps(self,typhoons):
         import numpy as np
         import matplotlib.colors as colors
@@ -1795,17 +1823,12 @@ class Forecast:
         track_gdf = gpd.GeoDataFrame(track, geometry=gpd.points_from_xy(track.LON, track.LAT))
 
         df_adm_impact = pd.merge(shfile, impact.filter(['Mun_Code','impact','HAZ_dis_track_min']),  how='left', left_on='adm3_pcode', right_on = 'Mun_Code')
-        df_map=df_adm_impact.query('HAZ_dis_track_min<200')
-        df_map1=df_adm_impact.query('HAZ_dis_track_min<300')
-        
-        # Check if df_map is empty or has invalid geometries
-        if df_map.empty:
-            logger.warning("df_map is empty after filtering. Using df_map1 instead.")
-            df_map = df_map1.copy()
-        
-        if df_map.empty:
-            logger.warning("Both df_map and df_map1 are empty. Using all administrative areas.")
-            df_map = df_adm_impact.copy()
+        df_adm_impact = gpd.GeoDataFrame(df_adm_impact, geometry='geometry', crs=shfile.crs)
+        df_map, df_map_bg = self._select_map_layers(df_adm_impact)
+
+        if df_map_bg.empty:
+            logger.warning("No valid geometries available for map rendering. Skipping map for %s", typhoons)
+            return
         
         df_map.fillna(0,inplace=True)
         
@@ -1830,7 +1853,7 @@ class Forecast:
         track_df=track_df.query('LON <128')
         track_df['geometry'] = track_df['geometry'].buffer(0.05)
         
-        df_map1.plot(ax=axes1, alpha=0.3, color='white', edgecolor='#969696')
+        df_map_bg.plot(ax=axes1, alpha=0.3, color='white', edgecolor='#969696')
         track_df.plot(ax=axes1, edgecolor="k")
         
         cx.add_basemap(axes1, crs=df_adm_impact.crs.to_string(), zoom=7,alpha=0.3)
@@ -1845,8 +1868,8 @@ class Forecast:
         axes1.set_axis_off()
         plt.grid()
 
-        lon_=0.5*(df_map.total_bounds[0]+df_map.total_bounds[2])
-        lat_=0.5*(df_map.total_bounds[1]+df_map.total_bounds[3])
+        lon_=0.5*(df_map_bg.total_bounds[0]+df_map_bg.total_bounds[2])
+        lat_=0.5*(df_map_bg.total_bounds[1]+df_map_bg.total_bounds[3])
 
         tr=pd.DataFrame([[lat_,lon_]]).rename(columns={0:'lat_',1:'lon_'})
 
