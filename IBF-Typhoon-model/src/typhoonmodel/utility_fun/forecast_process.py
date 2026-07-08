@@ -1824,6 +1824,13 @@ class Forecast:
 
         df_adm_impact = pd.merge(shfile, impact.filter(['Mun_Code','impact','HAZ_dis_track_min']),  how='left', left_on='adm3_pcode', right_on = 'Mun_Code')
         df_adm_impact = gpd.GeoDataFrame(df_adm_impact, geometry='geometry', crs=shfile.crs)
+        
+        # Remove invalid geometries
+        df_adm_impact = df_adm_impact[df_adm_impact.geometry.is_valid].copy()
+        if df_adm_impact.empty:
+            logger.warning("No valid geometries in df_adm_impact after filtering. Skipping map for %s", typhoons)
+            return
+        
         df_map, df_map_bg = self._select_map_layers(df_adm_impact)
 
         if df_map_bg.empty:
@@ -1856,7 +1863,17 @@ class Forecast:
         df_map_bg.plot(ax=axes1, alpha=0.3, color='white', edgecolor='#969696')
         track_df.plot(ax=axes1, edgecolor="k")
         
-        cx.add_basemap(axes1, crs=df_adm_impact.crs.to_string(), zoom=7,alpha=0.3)
+        # Add basemap with error handling
+        try:
+            # Validate bounds are valid numbers
+            bounds = axes1.get_xlim() + axes1.get_ylim()
+            if all(isinstance(b, (int, float)) and not np.isnan(b) for b in bounds):
+                cx.add_basemap(axes1, crs=df_adm_impact.crs.to_string(), zoom=7, alpha=0.3)
+            else:
+                logger.warning("Invalid bounds for basemap in main figure. Skipping basemap layer.")
+        except Exception as e:
+            logger.warning(f"Failed to add basemap to main figure: {e}. Continuing without basemap.")
+        
         df_map.plot(column='impact',
                 ax=axes1,
                 legend=True,
@@ -1878,7 +1895,18 @@ class Forecast:
 
         point_gdf.plot(ax=axes2, alpha=0.15, color='red', edgecolor='red') 
         df_adm_impact.plot(ax=axes2, alpha=0.3, color='white', edgecolor='#969696') 
-        cx.add_basemap(axes2, crs=df_adm_impact.crs.to_string(), zoom=7,alpha=0.3)
+        
+        # Add basemap with error handling
+        try:
+            # Validate bounds are valid numbers
+            bounds = axes2.get_xlim() + axes2.get_ylim()
+            if all(isinstance(b, (int, float)) and not np.isnan(b) for b in bounds):
+                cx.add_basemap(axes2, crs=df_adm_impact.crs.to_string(), zoom=7, alpha=0.3)
+            else:
+                logger.warning("Invalid bounds for basemap in inset figure. Skipping basemap layer.")
+        except Exception as e:
+            logger.warning(f"Failed to add basemap to inset figure: {e}. Continuing without basemap.")
+        
         axes2.set_axis_off()
         
         #axis  
