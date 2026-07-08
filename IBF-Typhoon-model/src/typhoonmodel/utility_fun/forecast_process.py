@@ -1824,13 +1824,6 @@ class Forecast:
 
         df_adm_impact = pd.merge(shfile, impact.filter(['Mun_Code','impact','HAZ_dis_track_min']),  how='left', left_on='adm3_pcode', right_on = 'Mun_Code')
         df_adm_impact = gpd.GeoDataFrame(df_adm_impact, geometry='geometry', crs=shfile.crs)
-        
-        # Remove invalid geometries
-        df_adm_impact = df_adm_impact[df_adm_impact.geometry.is_valid].copy()
-        if df_adm_impact.empty:
-            logger.warning("No valid geometries in df_adm_impact after filtering. Skipping map for %s", typhoons)
-            return
-        
         df_map, df_map_bg = self._select_map_layers(df_adm_impact)
 
         if df_map_bg.empty:
